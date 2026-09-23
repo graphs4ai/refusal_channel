@@ -86,11 +86,16 @@ class VLLMBackend(Backend):
                                             **self.chat_template_kwargs)
 
     def generate_batch(self, messages_list: list, temperature: float = 0.0,
-                       max_tokens: int = 64, seeds: list | None = None, **_):
+                       max_tokens: int = 64, seeds: list | None = None,
+                       stop: list | None = None, min_tokens: int = 0, **_):
+        """`stop` (strings) and `min_tokens` are only used by the self-generated
+        history turns of script 14; the main collection used neither."""
         from vllm import SamplingParams
         prompts = [self._render(m) for m in messages_list]
         sps = [SamplingParams(temperature=temperature, max_tokens=max_tokens,
-                              seed=(seeds[i] if seeds else None))
+                              seed=(seeds[i] if seeds else None),
+                              stop=stop or None, min_tokens=min_tokens,
+                              include_stop_str_in_output=False)
                for i in range(len(prompts))]
         outs = self.llm.generate(prompts, sps)
         return [{"text": o.outputs[0].text, "finish": o.outputs[0].finish_reason,

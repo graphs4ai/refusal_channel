@@ -1,0 +1,9 @@
+model,0/3,3/3,filler,none
+Qwen/Qwen2.5-14B-Instruct-AWQ,472.395,472.395,478.398,145.345
+Qwen/Qwen2.5-7B-Instruct,472.395,472.395,478.398,145.345
+Qwen/Qwen3-8B,476.395,476.395,482.398,149.345
+allenai/Olmo-3-7B-Instruct,466.97,466.97,472.973,142.64
+google/gemma-2-9b-it,470.716,470.716,470.719,142.988
+google/gemma-4-E4B-it,477.121,477.121,477.124,143.163
+meta-llama/Llama-3.1-8B-Instruct,488.93,488.93,494.933,164.635
+mistralai/Mistral-7B-Instruct-v0.3,459.178,459.178,460.183,147.015

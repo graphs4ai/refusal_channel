@@ -80,7 +80,7 @@ class Cache:
         return row
 
     def get_full(self, key: str):
-        """Returns a dict with text, finish, error, created_at and params, or None."""
+        """Returns a dict with text, finish, error and created_at, or None."""
         with self._lock:
             cur = self._conn.execute(
                 "SELECT text, finish, error, created_at, params FROM responses "
@@ -283,13 +283,16 @@ def run_records_batched(jobs, backend, cache: Cache, params=None, batch_size=64,
     groups = {}
     for key, j in todo:
         p = merged_params(j, params)
-        groups.setdefault((p.get("temperature", 0.0), p.get("max_tokens", 64)),
+        extra = tuple(sorted((k, json.dumps(p[k])) for k in ("stop", "min_tokens")
+                             if k in p))
+        groups.setdefault((p.get("temperature", 0.0), p.get("max_tokens", 64), extra),
                           []).append((key, j))
 
     t0 = time.time()
     done = err = 0
     stopped = False
-    for (temp, mx), items in groups.items():
+    for (temp, mx, extra), items in groups.items():
+        dec = {k: json.loads(v) for k, v in extra}   # only set by script 14
         if stopped:
             break
         if order_for_prefix_cache:
@@ -305,7 +308,7 @@ def run_records_batched(jobs, backend, cache: Cache, params=None, batch_size=64,
             t1 = time.time()
             try:
                 outs = backend.generate_batch(msgs, temperature=temp, max_tokens=mx,
-                                              seeds=seeds, metas=metas)
+                                              seeds=seeds, metas=metas, **dec)
                 errs = [None] * len(chunk)
             except Exception as e:                       # whole batch failed
                 outs = [None] * len(chunk)

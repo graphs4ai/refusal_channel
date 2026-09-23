@@ -177,6 +177,8 @@ def fmt_pp(r, stars=True):
 
 
 def write_tex(name, body):
+    # the condition is called "neutral" in the paper ("filler" is the code name)
+    body = body.replace("\\texttt{filler}", "\\texttt{neutral}")
     (GEN / f"{name}.tex").write_text(body)
 
 
@@ -466,7 +468,7 @@ def sec_correct_suggestions(p1, B):
                 "Model & \\multicolumn{2}{c}{Endorse $\\mid u=g$} & "
                 "\\multicolumn{2}{c}{Endorse $\\mid u\\neq g$} & $\\Delta$ selectivity & "
                 "\\multicolumn{2}{c}{Recovery} \\\\ & 3/3 & 0/3 & 3/3 & 0/3 & (0/3$-$3/3) & 3/3 & 0/3",
-                "tab_correct_suggestions")
+                "tab_correct_suggestions_raw")
     return t
 
 
@@ -628,17 +630,20 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
 # ============================================================ robustness arm
 VARIANTS = [("v0_baseline", "original"), ("v1_ack_alt", "ack changed"),
             ("v2_no_ack", "no assistant turns"), ("v3_force", "letter mandated"),
-            ("v4_selfgen", "self-generated history")]
+            ("v5_format", "format-compatible"), ("v6_noconf", "no confidence"),
+            ("v4b_selfgen", "self-generated history")]
+SELF = "v4b_selfgen"          # validated self-generated history (script 14)
+SELF_OLD = "v4_selfgen"       # first build (script 13), audited in the appendix
 
 
 def copies_context(row):
     """Does a non-answer reproduce an assistant turn present in its context?"""
     n = norm(row.text)
-    if row.variant in ("v0_baseline", "v3_force"):
+    if row.variant in ("v0_baseline", "v3_force", "v5_format", "v6_noconf"):
         return n == "noted"
     if row.variant == "v1_ack_alt":
         return n == norm(ACK_ALT["en"][int(row.paraphrase) % 3])
-    if row.variant == "v4_selfgen" and isinstance(row.generated_history, str):
+    if row.variant in (SELF, SELF_OLD) and isinstance(row.generated_history, str):
         return n in {norm(x) for x in json.loads(row.generated_history)}
     return False
 
@@ -685,7 +690,7 @@ def sec_robust(rob, main):
     latex_table(pd.DataFrame(out), "l" + "r" * len(VARIANTS),
                 "Model & " + " & ".join(lbl for _, lbl in VARIANTS),
                 "tab_variant_endorse")
-    for x in te[te.variant == "v4_selfgen"].itertuples():
+    for x in te[te.variant == SELF].itertuples():
         num(f"selfEnd{mname(x.model)}", f"{100 * x.diff:+.1f}", "{}")
         num(f"selfEnd{mname(x.model)}ci", (f"[{100 * x.lo:+.1f}, {100 * x.hi:+.1f}]"
                                           if np.isfinite(x.lo) else "(n.e.)"), "{}")
@@ -698,7 +703,7 @@ def sec_robust(rob, main):
         for o in ("non_answer", "endorse", "endorse_cond"):
             row.append(fmt_pp(cc[(cc.model == m) & (cc.outcome == o)
                                  & (cc.contrast == "hist_bare")].iloc[0]))
-        v4b = r[(r.model == m) & (r.variant == "v4_selfgen") & (r.signal == "bare")
+        v4b = r[(r.model == m) & (r.variant == SELF) & (r.signal == "bare")
                 & (r.position == "incorrect") & r.history.isin(["0/3", "3/3"])]
         x = diff_prop(v4b.endorse.astype(float), (v4b.history == "0/3").astype(float),
                       v4b.item_id)
@@ -708,30 +713,47 @@ def sec_robust(rob, main):
     latex_table(pd.DataFrame(out), "lrrrr",
                 "Model & Non-answer & Endorse (all) & Endorse $\\mid$ answered & "
                 "Endorse, self-gen.", "tab_history_scoring")
-    sig4 = te[(te.variant == "v4_selfgen") & (te.p_holm < 0.05) & (te["diff"] < 0)]
+    sig4 = te[(te.variant == SELF) & (te.p_holm < 0.05) & (te["diff"] < 0)]
     num("nSelfEndNeg", str(len(sig4)), "{}")
+    sig4p = te[(te.variant == SELF) & (te.p_holm < 0.05) & (te["diff"] > 0)]
+    num("nSelfEndPos", str(len(sig4p)), "{}")
+    num("nSelfEndNS", str(int(((te.variant == SELF) & ~(te.p_holm < 0.05)).sum())), "{}")
     # content audit of the self-generated assistant turns
     from sycodef.extract import parse_answer
     au = []
-    v4 = r[(r.variant == "v4_selfgen") & (r.history != "none")]
-    for m, g in v4.groupby("model"):
-        turns = [x for sgh in g.generated_history.dropna() for x in json.loads(sgh)]
-        au.append({"model": m, "turns": len(turns),
+    for build, vname in (("first", SELF_OLD), ("validated", SELF)):
+      v4 = r[(r.variant == vname) & (r.history != "none")]
+      for m, g in v4.groupby("model"):
+        # unique turns: one generation per (probe, history, position in history)
+        uniq = {}
+        for (it, h), gg in g.groupby(["item_id", "history"]):
+            uniq[(it, h)] = json.loads(gg.generated_history.dropna().iloc[0])
+        turns = [x for v in uniq.values() for x in v]
+        au.append({"build": build, "model": m, "turns": len(turns),
                    "with_option": float(np.mean([parse_answer(x)[0] is not None for x in turns])),
                    "empty": float(np.mean([x.strip() == "" for x in turns])),
                    "template_leak": float(np.mean(["[INST]" in x or "</s>" in x or
                                                    "<end_of_turn>" in x for x in turns]))})
-    au = pd.DataFrame(au).set_index("model").reindex(MORDER).reset_index()
+    au = pd.DataFrame(au)
     au.to_csv(RES / "selfgen_history_audit.csv", index=False)
-    num("leakMistral", pct(au.set_index("model").loc["mistralai/Mistral-7B-Instruct-v0.3",
-                                                     "template_leak"], 0), "{}")
-    num("emptyGtwo", pct(au.set_index("model").loc["google/gemma-2-9b-it", "empty"], 0), "{}")
-    ao = au.copy(); ao["model"] = ao.model.map(SHORT)
-    for c in ("with_option", "empty", "template_leak"):
-        ao[c] = ao[c].map(lambda v: f"{v:.3f}")
-    ao["turns"] = ao.turns.map(lambda v: f"{int(v):,}")
-    latex_table(ao, "lrrrr", "Model & Turns & Contains option & Empty & Template tokens",
-                "tab_selfgen_audit")
+    a1 = au[au.build == "first"].set_index("model")
+    a2 = au[au.build == "validated"].set_index("model")
+    num("leakMistral", pct(a1.loc["mistralai/Mistral-7B-Instruct-v0.3", "template_leak"], 0), "{}")
+    num("emptyGtwo", pct(a1.loc["google/gemma-2-9b-it", "empty"], 0), "{}")
+    num("nSelfTurnsUnique", f"{int(a2.turns.iloc[0]):,}", "{}")
+    num("maxBadSelfTurns", pct(float((a2.empty + a2.template_leak).max()), 1), "{}")
+    num("withOptSelfMin", pct(float(a2.with_option.min()), 0), "{}")
+    num("withOptSelfMax", pct(float(a2.with_option.max()), 0), "{}")
+    rows = []
+    for m in MORDER:
+        x1, x2 = a1.loc[m], a2.loc[m]
+        rows.append([SHORT[m], f"{int(x2.turns):,}",
+                     f"{x1.with_option:.3f}", f"{x1.empty:.3f}", f"{x1.template_leak:.3f}",
+                     f"{x2.with_option:.3f}", f"{x2.empty:.3f}", f"{x2.template_leak:.3f}"])
+    latex_table(pd.DataFrame(rows), "lrrrrrrr",
+                "Model & Unique turns & \\multicolumn{3}{c}{First build} & "
+                "\\multicolumn{3}{c}{Validated build (v4b)} \\\\ & & option & empty & "
+                "template & option & empty & template", "tab_selfgen_audit")
     # determinism: v0 reproduces main-arm replicate 0 with the identical prompt
     v0 = r[r.variant == "v0_baseline"][["base_record_id", "answer"]]
     mm = main[["record_id", "answer"]].rename(columns={"record_id": "base_record_id",
@@ -743,19 +765,19 @@ def sec_robust(rob, main):
     refusing = [m for m in MORDER
                 if t[(t.model == m) & (t.variant == "v0_baseline")].rate.iloc[0] >= 0.05]
     out = []
-    for m in refusing:
+    for m in MORDER:
         row = [SHORT[m]]
         for v, _ in VARIANTS:
             x = t[(t.model == m) & (t.variant == v)]
             if not len(x):
                 row.append("--"); continue
             x = x.iloc[0]
-            row.append(f"{x.rate:.3f} ({x.k}/{x.n})")
+            row.append(f"{x.rate:.3f} ({x.k})")
         out.append(row)
     latex_table(pd.DataFrame(out), "l" + "r" * len(VARIANTS),
                 "Model & " + " & ".join(lbl for _, lbl in VARIANTS), "tab_variants")
     out = []
-    for m in refusing:
+    for m in MORDER:
         row = [SHORT[m]]
         for v, _ in VARIANTS:
             x = t[(t.model == m) & (t.variant == v)]
@@ -782,11 +804,13 @@ def sec_robust(rob, main):
     for m in refusing:
         x0 = t[(t.model == m) & (t.variant == "v0_baseline")].iloc[0]
         for v, key in (("v1_ack_alt", "Ack"), ("v3_force", "Force"),
-                       ("v4_selfgen", "Self"), ("v2_no_ack", "NoAck")):
+                       (SELF, "Self"), ("v2_no_ack", "NoAck"), ("v5_format", "Format"),
+                       ("v6_noconf", "NoConf")):
             x = t[(t.model == m) & (t.variant == v)]
             if len(x) and x0.rate > 0:
                 num(f"drop{key}{mname(m)}", pct(1 - x.iloc[0].rate / x0.rate, 0), "{}")
-    for key, v in (("Ack", "v1_ack_alt"), ("Force", "v3_force"), ("Self", "v4_selfgen")):
+    for key, v in (("Ack", "v1_ack_alt"), ("Force", "v3_force"), ("Self", SELF),
+                   ("Format", "v5_format"), ("NoConf", "v6_noconf")):
         vals = []
         for m in refusing:
             x0 = t[(t.model == m) & (t.variant == "v0_baseline")].iloc[0].rate
@@ -800,12 +824,34 @@ def sec_robust(rob, main):
             num(f"remain{key}Max", pct(1 - min(vals), 0), "{}")
     cps = t[(t.variant == "v1_ack_alt") & t.model.isin(refusing)].copy_share
     num("copyAltMin", pct(cps.min(), 0), "{}"); num("copyAltMax", pct(cps.max(), 0), "{}")
-    cps4 = t[(t.variant == "v4_selfgen") & t.model.isin(refusing)].copy_share.dropna()
+    for v, key in (("v5_format", "Format"), ("v6_noconf", "NoConf")):
+        cp_ = t[(t.variant == v) & t.model.isin(refusing)].copy_share.dropna()
+        if len(cp_):
+            num(f"copy{key}Min", pct(cp_.min(), 0), "{}"); num(f"copy{key}Max", pct(cp_.max(), 0), "{}")
+        for m in MORDER:
+            x = t[(t.model == m) & (t.variant == v)]
+            if len(x):
+                num(f"na{key}{mname(m)}", f"{x.iloc[0].rate:.3f}")
+    for m in MORDER:
+        x = t[(t.model == m) & (t.variant == "v0_baseline")]
+        if len(x):
+            num(f"naOrig{mname(m)}", f"{x.iloc[0].rate:.3f}")
+    cps4 = t[(t.variant == SELF) & t.model.isin(refusing)].copy_share.dropna()
     if len(cps4):
         num("copySelfMin", pct(cps4.min(), 0), "{}"); num("copySelfMax", pct(cps4.max(), 0), "{}")
     v2 = t[t.variant == "v2_no_ack"]
     num("noAckEvents", str(int(v2.k.sum())), "{}"); num("noAckN", f"{int(v2.n.sum()):,}", "{}")
     num("nRefusing", str(len(refusing)), "{}")
+    # models without non-answers in the original scaffold that acquire them
+    others = [m for m in MORDER if m not in refusing]
+    for v, key in (("v5_format", "Format"), ("v6_noconf", "NoConf")):
+        new_na = [m for m in others
+                  if t[(t.model == m) & (t.variant == v)].rate.iloc[0] >= 0.05]
+        num(f"nNew{key}", str(len(new_na)), "{}")
+    # self-generated validated build: max non-answer rate over models
+    x = t[t.variant == SELF]
+    num("maxNASelf", pct(x.rate.max(), 1), "{}")
+    num("nNASelf", str(int(x.k.sum())), "{}"); num("nNASelfN", f"{int(x.n.sum()):,}", "{}")
     return t, rates, refusing
 
 
@@ -901,6 +947,159 @@ def sec_items(probes, cal, cmap, main):
     return t
 
 
+# ============================================================ baseline-eligible
+def sec_transitions(p1, B):
+    """Recovery P(A=g | B!=g, u=g) and correct-to-suggested P(A=u | B=g, u!=g),
+    3/3 vs 0/3, bare assertion; only probes with a defined baseline."""
+    d = p1[p1.history.isin(["0/3", "3/3"])].merge(B, on=["model", "item_id"], how="left")
+    d = d[d.B.notna()]
+    rows = []
+    for m in MORDER:
+        for s_ in ("bare", "credential"):
+            g = d[(d.model == m) & (d.signal == s_)]
+            rec = g[(g.position == "correct") & (g.B != g.canon_true)]
+            c2u = g[(g.position == "incorrect") & (g.B == g.canon_true)]
+            for name, sub, y in (("recovery", rec, rec.correct), ("c2u", c2u, c2u.endorse)):
+                r = diff_prop(y.astype(float), (sub.history == "0/3").astype(float), sub.item_id)
+                rows.append({"model": m, "signal": s_, "metric": name, **r})
+    t = pd.DataFrame(rows)
+    t = pd.concat([holm(g) for _, g in t.groupby(["metric", "signal"])]).sort_index()
+    t.to_csv(RES / "baseline_eligible_transitions.csv", index=False)
+    out = []
+    for m in MORDER:
+        row = [SHORT[m]]
+        for name in ("recovery", "c2u"):
+            x = t[(t.model == m) & (t.signal == "bare") & (t.metric == name)].iloc[0]
+            row += [f"{x.p0:.3f} ({x.n0})", f"{x.p1:.3f} ({x.n1})", fmt_pp(x)]
+            num(f"tr{'Rec' if name == 'recovery' else 'Cu'}{mname(m)}", f"{100 * x['diff']:+.1f}", "{}")
+            num(f"tr{'Rec' if name == 'recovery' else 'Cu'}{mname(m)}ci",
+                f"[{100 * x.lo:+.1f}, {100 * x.hi:+.1f}]" if np.isfinite(x.lo) else "(n.e.)", "{}")
+        out.append(row)
+    latex_table(pd.DataFrame(out), "lrrrrrr",
+                "Model & \\multicolumn{3}{c}{Recovery $P(A{=}g\\mid B{\\neq}g,\\,u{=}g)$} & "
+                "\\multicolumn{3}{c}{Correct-to-suggested $P(A{=}u\\mid B{=}g,\\,u{\\neq}g)$} \\\\ "
+                "& 3/3 ($n$) & 0/3 ($n$) & $\\Delta$ [95\\% CI] & 3/3 ($n$) & 0/3 ($n$) & "
+                "$\\Delta$ [95\\% CI]", "tab_correct_suggestions")
+    tb = t[t.signal == "bare"]
+    for name, key in (("recovery", "Rec"), ("c2u", "Cu")):
+        x = tb[tb.metric == name]
+        num(f"n{key}Up", str(int(((x.p_holm < 0.05) & (x["diff"] > 0)).sum())), "{}")
+        num(f"n{key}Down", str(int(((x.p_holm < 0.05) & (x["diff"] < 0)).sum())), "{}")
+    return t
+
+
+# ============================================================ pooled table
+def tab_pooled():
+    t = pd.read_csv(RES / "pooling.csv")
+    lab = {"non_answer": "Non-answer", "endorse": "Endorse (all)",
+           "endorse_cond": "Endorse $\\mid$ answered", "correct": "Correct"}
+    out = []
+    for r in t.itertuples():
+        out.append([lab.get(r.outcome, r.outcome),
+                    f"{100 * r.pooled_naive:+.1f} [{100 * r.pooled_naive_lo:+.1f}, "
+                    f"{100 * r.pooled_naive_hi:+.1f}]",
+                    f"{100 * r.pooled_model_fe:+.1f}",
+                    f"{100 * r.within_min:+.1f} to {100 * r.within_max:+.1f}",
+                    f"{r.n_within_pos}/{r.n_within_neg}"])
+    latex_table(pd.DataFrame(out), "lrrrr",
+                "Outcome & Pooled [95\\% CI] & Model FE & Within-model range & $+$/$-$",
+                "tab_pooling")
+
+
+# ============================================================ parser audit
+AUDIT_RX = [re.compile(r"\b(?:answer|resposta)\s*[:\-]\s*\(?([A-D])\)?(?![A-Za-z])", re.I),
+            re.compile(r"\b(?:correct\s+)?(?:answer|option)\s+(?:is|would be)\s*\(?([A-D])\)?"
+                       r"(?![A-Za-z])", re.I),
+            re.compile(r"^\s*\(?([A-D])\)?\s*[.)\]]?\s*$", re.M)]
+
+
+def sec_parser_audit(main):
+    from sycodef.extract import ANS_RE
+    d = main[main.parsed].copy()
+
+    def check(t):
+        t = t if isinstance(t, str) else ""
+        dec = set()
+        for rx in AUDIT_RX:
+            dec |= {x.upper() for x in rx.findall(t)}
+        glued = False
+        for rx in ANS_RE:
+            mm = rx.search(t)
+            if mm:
+                nxt = t[mm.end(1):mm.end(1) + 1]
+                glued = mm.group(1).islower() or bool(re.match(r"[A-Za-z]", nxt))
+                break
+        return len(dec) > 1, glued
+    res = d.text.map(check)
+    d["multi_letter"] = [x[0] for x in res]
+    d["glued"] = [x[1] for x in res]
+    tab = d.groupby(["model", "parse_rule"]).agg(n=("parsed", "size"),
+                                                  multi_letter=("multi_letter", "sum"),
+                                                  glued=("glued", "sum")).reset_index()
+    tab.to_csv(RES / "parser_audit.csv", index=False)
+    num("nParsed", f"{len(d):,}", "{}")
+    num("pctRuleZero", pct((d.parse_rule == "rule0").mean(), 1), "{}")
+    num("nMultiLetter", f"{int(d.multi_letter.sum()):,}", "{}")
+    mis = d[d.model == "mistralai/Mistral-7B-Instruct-v0.3"]
+    num("nMultiLetterMis", f"{int(mis.multi_letter.sum()):,}", "{}")
+    num("nGlued", str(int(d.glued.sum())), "{}")
+    # sensitivity: drop flagged records, recompute the primary endorse_cond contrasts
+    p1 = main[main.arm == "p1"]
+    flagged = set(d[d.multi_letter | d.glued].record_id)
+    sub = p1[~p1.record_id.isin(flagged)]
+    inc = sub[(sub.position == "incorrect") & sub.history.isin(["0/3", "3/3"])
+              & (sub.signal == "bare") & sub.parsed]
+    base = pd.read_csv(RES / "contrasts_pp.csv")
+    chg = []
+    for m in MORDER:
+        g = inc[inc.model == m]
+        x = diff_prop(g.endorse.astype(float), (g.history == "0/3").astype(float), g.item_id)
+        b0 = base[(base.model == m) & (base.outcome == "endorse_cond")
+                  & (base.contrast == "hist_bare")].iloc[0]["diff"]
+        chg.append(abs(x["diff"] - b0))
+    num("maxChangeParserFlags", f"{100 * max(chg):.2f}", "{}")
+    # stratified sample for manual verification (released; not annotated here)
+    rng = np.random.default_rng(RNG_SEED)
+    samp = []
+    for (m, rule), g in d.groupby(["model", "parse_rule"]):
+        k = min(len(g), 25 if rule == "rule0" else 50)
+        samp.append(g.iloc[rng.choice(len(g), k, replace=False)])
+    sp = pd.concat(samp)[["record_id", "model", "parse_rule", "text", "answer",
+                          "multi_letter", "glued"]]
+    sp["manual_option"] = ""
+    sp["annotator"] = ""
+    sp.to_csv(RES / "parser_audit_sample.csv", index=False)
+    num("nParserSample", f"{len(sp):,}", "{}")
+    return tab
+
+
+# ============================================================ prompt lengths
+def sec_lengths(main):
+    pth = DATA / "prompt_lengths.csv.gz"
+    if not pth.exists():
+        return None
+    L = pd.read_csv(pth)
+    lim = 1024 - 64
+    num("lenMedian", f"{int(L.prompt_tokens.median()):,}", "{}")
+    num("lenPninetyfive", f"{int(L.prompt_tokens.quantile(0.95)):,}", "{}")
+    num("lenMax", f"{int(L.prompt_tokens.max()):,}", "{}")
+    num("lenOver", str(int((L.prompt_tokens > lim).sum())), "{}")
+    num("lenN", f"{len(L):,}", "{}")
+    # structure matching: prompt tokens by history in the pressure arm
+    mm = L[L.arm == "main"].merge(main[["record_id", "history", "arm"]].rename(
+        columns={"arm": "design_arm"}), on="record_id")
+    mm = mm[mm.design_arm == "p1"]
+    by = mm.groupby(["model", "history"]).prompt_tokens.mean().unstack()
+    by.to_csv(RES / "prompt_tokens_by_history.csv")
+    rel = ((by["filler"] - by[["3/3", "0/3"]].mean(axis=1)) / by[["3/3", "0/3"]].mean(axis=1))
+    num("lenFillerDiffMin", pct(rel.min(), 0), "{}")
+    num("lenFillerDiffMax", pct(rel.max(), 0), "{}")
+    num("lenInfoMean", f"{int(by[['3/3', '0/3']].values.mean()):,}", "{}")
+    num("lenFillerMean", f"{int(by['filler'].mean()):,}", "{}")
+    num("lenNoneMean", f"{int(by['none'].mean()):,}", "{}")
+    return by
+
+
 # ============================================================ manifest
 def sec_manifest(main, rob, ctl, tr, genlog):
     rows = []
@@ -913,8 +1112,10 @@ def sec_manifest(main, rob, ctl, tr, genlog):
                      "shared": int((g.arm == "shared").sum()),
                      "main_total": len(g), "main_first_wave": int(wave1),
                      "robust_v0_v3": int(rb.variant.isin([v for v, _ in VARIANTS[:4]]).sum()),
-                     "robust_v4_probe": int((rb.variant == "v4_selfgen").sum()),
-                     "v4_history_turns": genlog.get("e2_history_turns", {}).get(m, np.nan),
+                     "robust_v5_v6": int(rb.variant.isin(["v5_format", "v6_noconf"]).sum()),
+                     "robust_v4_probe": int(rb.variant.isin([SELF, SELF_OLD]).sum()),
+                     "v4_history_turns": (genlog.get("e2_history_turns", {}).get(m, 0)
+                                          + genlog.get("v4b_history_turns", {}).get(m, 0)),
                      "control_e1": int((ctl.model == m).sum()) if ctl is not None else 0})
     t = pd.DataFrame(rows)
     t.to_csv(RES / "manifest.csv", index=False)
@@ -924,30 +1125,32 @@ def sec_manifest(main, rob, ctl, tr, genlog):
         num("n" + "".join(w.capitalize() for w in k.split("_")).replace("0", "Zero")
             .replace("3", "Three").replace("4", "Four").replace("1", "One"),
             f"{int(tot[k]):,}", "{}")
+    num("nRobustVFiveSix", f"{int(tot.robust_v5_v6):,}", "{}")
     v4h = int(np.nansum(t.v4_history_turns))
     num("nVFourHist", f"{v4h:,}", "{}")
     ntr = len(tr) if tr is not None else 0
-    total = int(tot.main_total + tot.robust_v0_v3 + tot.robust_v4_probe + v4h
-                + tot.control_e1 + ntr)
+    total = int(tot.main_total + tot.robust_v0_v3 + tot.robust_v5_v6 + tot.robust_v4_probe
+                + v4h + tot.control_e1 + ntr)
     num("nGenerationsTotal", f"{total:,}", "{}")
     num("nTruncRerunAll", f"{ntr:,}", "{}")
     out = t.copy()
     out["model"] = out.model.map(SHORT)
-    out = out[["model", "pressure", "shared", "robust_v0_v3", "robust_v4_probe",
-               "v4_history_turns", "control_e1"]]
+    out = out[["model", "pressure", "shared", "robust_v0_v3", "robust_v5_v6",
+               "robust_v4_probe", "v4_history_turns", "control_e1"]]
     tot_row = ["Total"] + [f"{int(np.nansum(out[c])):,}" for c in out.columns[1:]]
     for c in out.columns[1:]:
         out[c] = out[c].map(lambda v: f"{int(v):,}" if np.isfinite(v) else "--")
     out.loc[len(out)] = tot_row
-    latex_table(out, "lrrrrrr",
-                "Model & Pressure & Shared & Robust.\\ v0--v3 & v4 probes & v4 history turns"
-                " & Matched control", "tab_manifest")
+    latex_table(out, "lrrrrrrr",
+                "Model & Pressure & Shared & v0--v3 & v5--v6 & Self-gen.\\ probes & "
+                "Self-gen.\\ turns & Matched control", "tab_manifest")
     return t
 
 
 # ============================================================ figures
 COL = {"correct": "#4C72B0", "endorse": "#C44E52", "other_wrong": "#DD8452",
        "non_answer": "#8C8C8C"}
+HATCH = {"correct": "", "endorse": "////", "other_wrong": "....", "non_answer": "xxxx"}
 CLAB = {"correct": "correct", "endorse": "endorses user's wrong option",
         "other_wrong": "other wrong option", "non_answer": "non-answer"}
 
@@ -980,8 +1183,8 @@ def fig_outcomes(g):
             for h in HIST:
                 for s in ("bare", "credential"):
                     vals.append(float(gm[(gm.history == h) & (gm.signal == s)][f"p_{c}"].iloc[0]))
-            ax.bar(xs, vals, 0.95, bottom=bottom, color=COL[c], lw=0,
-                   label=CLAB[c] if m == MORDER[0] else None)
+            ax.bar(xs, vals, 0.95, bottom=bottom, color=COL[c], edgecolor="white", lw=0.4,
+                   hatch=HATCH[c], label=CLAB[c] if m == MORDER[0] else None)
             bottom += np.array(vals)
         ax.set_title(SHORT[m])
         ax.set_xticks([i * 2.6 + 0.52 for i in range(4)])
@@ -1002,26 +1205,26 @@ def fig_outcomes(g):
 def fig_robust(rates, refusing):
     import matplotlib.pyplot as plt
     style()
-    fig, axes = plt.subplots(1, len(refusing), figsize=(7.0, 2.3), sharey=True)
-    axes = np.atleast_1d(axes)
+    fig, axes = plt.subplots(2, 4, figsize=(7.0, 3.9), sharey=True)
+    axes = np.atleast_1d(axes).ravel()
     x = np.arange(len(VARIANTS))
     for ax, m in zip(axes, refusing):
-        for k, (h, c) in enumerate((("3/3", "#4C72B0"), ("0/3", "#C44E52"))):
+        for k, (h, c, hat) in enumerate((("3/3", "#4C72B0", ""), ("0/3", "#C44E52", "////"))):
             v = [rates[(rates.model == m) & (rates.variant == vv) & (rates.history == h)]
                  .rate.squeeze() if len(rates[(rates.model == m) & (rates.variant == vv)
                                                & (rates.history == h)]) else np.nan
                  for vv, _ in VARIANTS]
-            ax.bar(x + (k - 0.5) * 0.38, v, 0.38, color=c, lw=0,
-                   label=f"history {h}" if m == refusing[0] else None)
+            ax.bar(x + (k - 0.5) * 0.38, v, 0.38, color=c, edgecolor="white", lw=0.4,
+                   hatch=hat, label=f"history {h}" if m == refusing[0] else None)
             for xi, vi in zip(x, v):
                 if np.isfinite(vi) and vi == 0:
                     ax.text(xi + (k - 0.5) * 0.38, 0.01, "0", ha="center", va="bottom",
                             fontsize=5, color=c)
         ax.set_title(SHORT[m]); ax.set_xticks(x)
-        ax.set_xticklabels(["orig.", "ack\nalt.", "no\nasst.", "letter\nmand.",
-                            "self-\ngen."], fontsize=6)
+        ax.set_xticklabels(["orig", "ack", "no asst", "letter", "fmt", "no conf", "self"],
+                           fontsize=5.5, rotation=45, ha="right", rotation_mode="anchor")
         ax.set_ylim(0, 1)
-    axes[0].set_ylabel("non-answer rate")
+    axes[0].set_ylabel("non-answer rate"); axes[4].set_ylabel("non-answer rate")
     axes[0].legend(loc="upper right")
     fig.tight_layout()
     fig.savefig(FIG / "fig_robust.pdf"); fig.savefig(FIG / "fig_robust.png", dpi=200)
@@ -1076,6 +1279,10 @@ def main():
     c = sec_contrasts(p1)
     sec_correct_suggestions(p1, B)
     sec_pooled(p1, c)
+    tab_pooled()
+    sec_transitions(p1, B)
+    sec_parser_audit(main_df)
+    sec_lengths(main_df)
     t_rob, rates, refusing = sec_robust(rob, main_df)
     sec_trunc(main_df, tr)
     if ctl is not None:
@@ -1099,7 +1306,7 @@ def main():
         num("ctlNAMaxHist", mx[1], "{}")
     sec_manifest(main_df, rob, ctl, tr, meta)
     fig_outcomes(g)
-    fig_robust(rates, refusing)
+    fig_robust(rates, MORDER)
     def tex(v):  # thousands separators must not become math-mode punctuation
         return v.replace(",", "{,}") if re.fullmatch(r"[+-]?[\d,]+(\.\d+)?", v) else v
     macros = "\n".join(f"\\newcommand{{\\{k}}}{{{tex(v)}}}" for k, v in sorted(NUM.items()))

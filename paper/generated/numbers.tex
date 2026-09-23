@@ -11,6 +11,10 @@
 \newcommand{\ackShareMin}{0.0}
 \newcommand{\copyAltMax}{100}
 \newcommand{\copyAltMin}{98}
+\newcommand{\copyFormatMax}{100}
+\newcommand{\copyFormatMin}{92}
+\newcommand{\copyNoConfMax}{100}
+\newcommand{\copyNoConfMin}{98}
 \newcommand{\ctlNAGfourBad}{0.0}
 \newcommand{\ctlNAGfourFiller}{0.1}
 \newcommand{\ctlNAGfourGood}{0.0}
@@ -256,10 +260,22 @@
 \newcommand{\dropForceOlm}{15}
 \newcommand{\dropForceQwF}{49}
 \newcommand{\dropForceQwS}{17}
+\newcommand{\dropFormatGtwo}{100}
+\newcommand{\dropFormatMax}{100}
+\newcommand{\dropFormatMin}{20}
+\newcommand{\dropFormatOlm}{20}
+\newcommand{\dropFormatQwF}{84}
+\newcommand{\dropFormatQwS}{90}
 \newcommand{\dropNoAckGtwo}{100}
 \newcommand{\dropNoAckOlm}{100}
 \newcommand{\dropNoAckQwF}{100}
 \newcommand{\dropNoAckQwS}{100}
+\newcommand{\dropNoConfGtwo}{-52}
+\newcommand{\dropNoConfMax}{-14}
+\newcommand{\dropNoConfMin}{-118}
+\newcommand{\dropNoConfOlm}{-14}
+\newcommand{\dropNoConfQwF}{-55}
+\newcommand{\dropNoConfQwS}{-118}
 \newcommand{\dropSelfGtwo}{100}
 \newcommand{\dropSelfMax}{100}
 \newcommand{\dropSelfMin}{100}
@@ -334,31 +350,61 @@
 \newcommand{\formNullMax}{0.459}
 \newcommand{\formNullMin}{0.131}
 \newcommand{\leakMistral}{67}
+\newcommand{\lenFillerDiffMax}{1}
+\newcommand{\lenFillerDiffMin}{0}
+\newcommand{\lenFillerMean}{476}
+\newcommand{\lenInfoMean}{473}
+\newcommand{\lenMax}{813}
+\newcommand{\lenMedian}{440}
+\newcommand{\lenN}{273{,}600}
+\newcommand{\lenNoneMean}{147}
+\newcommand{\lenOver}{0}
+\newcommand{\lenPninetyfive}{540}
+\newcommand{\maxBadSelfTurns}{0.0}
+\newcommand{\maxChangeParserFlags}{0.13}
 \newcommand{\maxNAChangeTrunc}{0.10}
+\newcommand{\maxNASelf}{0.8}
 \newcommand{\maxNoneFillerCell}{1.5}
 \newcommand{\maxNoneFillerCellCond}{\texttt{filler}, credential}
 \newcommand{\maxNoneFillerCellModel}{Qwen2.5-14B-AWQ}
 \newcommand{\nBoot}{2{,}000}
 \newcommand{\nCal}{900}
 \newcommand{\nControlEOne}{32{,}000}
+\newcommand{\nCuDown}{5}
+\newcommand{\nCuUp}{2}
 \newcommand{\nDiscordant}{3}
-\newcommand{\nGenerationsTotal}{281{,}733}
+\newcommand{\nGenerationsTotal}{334{,}533}
+\newcommand{\nGlued}{1}
 \newcommand{\nMain}{171{,}200}
 \newcommand{\nMainFirstWave}{67{,}000}
 \newcommand{\nMainTotal}{171{,}200}
+\newcommand{\nMultiLetter}{305}
+\newcommand{\nMultiLetterMis}{288}
+\newcommand{\nNASelf}{7}
+\newcommand{\nNASelfN}{6{,}400}
+\newcommand{\nNewFormat}{2}
+\newcommand{\nNewNoConf}{2}
 \newcommand{\nNonAnswerAck}{16{,}091}
 \newcommand{\nNonAnswerMain}{16{,}305}
 \newcommand{\nNoneFillerNA}{26}
 \newcommand{\nNoneFillerRecords}{32{,}000}
+\newcommand{\nParsed}{154{,}895}
+\newcommand{\nParserSample}{344}
 \newcommand{\nPressure}{128{,}000}
 \newcommand{\nProbeMMLU}{142}
 \newcommand{\nProbeP}{200}
 \newcommand{\nProbeShared}{300}
 \newcommand{\nProbeTQA}{58}
+\newcommand{\nRecDown}{5}
+\newcommand{\nRecUp}{2}
 \newcommand{\nRefusing}{4}
-\newcommand{\nRobustVFourProbe}{12{,}800}
+\newcommand{\nRobustVFiveSix}{25{,}600}
+\newcommand{\nRobustVFourProbe}{25{,}600}
 \newcommand{\nRobustVZeroVThree}{51{,}200}
+\newcommand{\nSelfEndNS}{2}
 \newcommand{\nSelfEndNeg}{6}
+\newcommand{\nSelfEndPos}{0}
+\newcommand{\nSelfTurnsUnique}{1{,}800}
 \newcommand{\nShared}{43{,}200}
 \newcommand{\nSigEC}{18}
 \newcommand{\nSigNA}{15}
@@ -369,12 +415,36 @@
 \newcommand{\nTruncRerun}{133}
 \newcommand{\nTruncRerunAll}{133}
 \newcommand{\nTruncRerunMain}{96}
-\newcommand{\nVFourHist}{14{,}400}
+\newcommand{\nVFourHist}{28{,}800}
+\newcommand{\naFormatGfour}{0.000}
+\newcommand{\naFormatGtwo}{0.000}
+\newcommand{\naFormatLla}{0.631}
+\newcommand{\naFormatMis}{0.000}
+\newcommand{\naFormatOlm}{0.685}
+\newcommand{\naFormatQwF}{0.055}
+\newcommand{\naFormatQwS}{0.031}
+\newcommand{\naFormatQwT}{0.051}
 \newcommand{\naGfour}{0.000}
 \newcommand{\naGtwo}{0.297}
 \newcommand{\naLla}{0.000}
 \newcommand{\naMis}{0.005}
+\newcommand{\naNoConfGfour}{0.000}
+\newcommand{\naNoConfGtwo}{0.912}
+\newcommand{\naNoConfLla}{0.000}
+\newcommand{\naNoConfMis}{0.287}
+\newcommand{\naNoConfOlm}{0.974}
+\newcommand{\naNoConfQwF}{0.545}
+\newcommand{\naNoConfQwS}{0.690}
+\newcommand{\naNoConfQwT}{0.234}
 \newcommand{\naOlm}{0.418}
+\newcommand{\naOrigGfour}{0.000}
+\newcommand{\naOrigGtwo}{0.599}
+\newcommand{\naOrigLla}{0.000}
+\newcommand{\naOrigMis}{0.011}
+\newcommand{\naOrigOlm}{0.856}
+\newcommand{\naOrigQwF}{0.352}
+\newcommand{\naOrigQwS}{0.316}
+\newcommand{\naOrigQwT}{0.003}
 \newcommand{\naQwF}{0.151}
 \newcommand{\naQwS}{0.144}
 \newcommand{\naQwT}{0.000}
@@ -387,6 +457,7 @@
 \newcommand{\pctBaselineStable}{95.0}
 \newcommand{\pctNonAnswerAck}{98.7}
 \newcommand{\pctNoneFillerNA}{0.08}
+\newcommand{\pctRuleZero}{99.7}
 \newcommand{\pctTruncMain}{3.4}
 \newcommand{\pctTruncMistral}{27}
 \newcommand{\pooledFeEC}{-4.0}
@@ -429,6 +500,10 @@
 \newcommand{\remainAckMin}{21}
 \newcommand{\remainForceMax}{85}
 \newcommand{\remainForceMin}{48}
+\newcommand{\remainFormatMax}{80}
+\newcommand{\remainFormatMin}{0}
+\newcommand{\remainNoConfMax}{218}
+\newcommand{\remainNoConfMin}{114}
 \newcommand{\remainSelfMax}{0}
 \newcommand{\remainSelfMin}{0}
 \newcommand{\selGfour}{+6.9}
@@ -463,20 +538,20 @@
 \newcommand{\selQwTCred}{+6.4}
 \newcommand{\selQwTCredci}{[+4.5, +8.3]}
 \newcommand{\selQwTci}{[+13.8, +20.0]}
-\newcommand{\selfEndGfour}{-15.0}
-\newcommand{\selfEndGfourci}{[-21.2, -8.8]}
+\newcommand{\selfEndGfour}{-14.5}
+\newcommand{\selfEndGfourci}{[-20.6, -8.4]}
 \newcommand{\selfEndGtwo}{-10.0}
 \newcommand{\selfEndGtwoci}{[-14.2, -5.8]}
-\newcommand{\selfEndLla}{-17.5}
-\newcommand{\selfEndLlaci}{[-23.8, -11.2]}
-\newcommand{\selfEndMis}{+0.0}
-\newcommand{\selfEndMisci}{[-4.6, +4.6]}
+\newcommand{\selfEndLla}{-17.0}
+\newcommand{\selfEndLlaci}{[-23.1, -10.9]}
+\newcommand{\selfEndMis}{-4.5}
+\newcommand{\selfEndMisci}{[-7.6, -1.4]}
 \newcommand{\selfEndOlm}{+1.0}
 \newcommand{\selfEndOlmci}{[-1.8, +3.8]}
 \newcommand{\selfEndQwF}{-19.0}
 \newcommand{\selfEndQwFci}{[-25.8, -12.2]}
-\newcommand{\selfEndQwS}{-13.5}
-\newcommand{\selfEndQwSci}{[-18.5, -8.5]}
+\newcommand{\selfEndQwS}{-15.0}
+\newcommand{\selfEndQwSci}{[-20.5, -9.5]}
 \newcommand{\selfEndQwT}{-34.0}
 \newcommand{\selfEndQwTci}{[-41.4, -26.6]}
 \newcommand{\simMax}{0.133}
@@ -486,3 +561,37 @@
 \newcommand{\tauHi}{1.000}
 \newcommand{\tauLo}{0.714}
 \newcommand{\tauPoint}{0.786}
+\newcommand{\trCuGfour}{-9.4}
+\newcommand{\trCuGfourci}{[-12.1, -6.7]}
+\newcommand{\trCuGtwo}{+7.2}
+\newcommand{\trCuGtwoci}{[+3.2, +11.2]}
+\newcommand{\trCuLla}{-10.9}
+\newcommand{\trCuLlaci}{[-13.6, -8.2]}
+\newcommand{\trCuMis}{+0.7}
+\newcommand{\trCuMisci}{[-1.7, +3.0]}
+\newcommand{\trCuOlm}{+8.8}
+\newcommand{\trCuOlmci}{[+5.1, +12.4]}
+\newcommand{\trCuQwF}{-12.8}
+\newcommand{\trCuQwFci}{[-15.8, -9.8]}
+\newcommand{\trCuQwS}{-22.0}
+\newcommand{\trCuQwSci}{[-26.5, -17.6]}
+\newcommand{\trCuQwT}{-22.9}
+\newcommand{\trCuQwTci}{[-26.5, -19.2]}
+\newcommand{\trRecGfour}{-6.0}
+\newcommand{\trRecGfourci}{[-9.1, -2.9]}
+\newcommand{\trRecGtwo}{+25.7}
+\newcommand{\trRecGtwoci}{[+16.6, +34.7]}
+\newcommand{\trRecLla}{-6.2}
+\newcommand{\trRecLlaci}{[-8.9, -3.6]}
+\newcommand{\trRecMis}{-1.6}
+\newcommand{\trRecMisci}{[-3.5, +0.3]}
+\newcommand{\trRecOlm}{+8.3}
+\newcommand{\trRecOlmci}{[+3.0, +13.6]}
+\newcommand{\trRecQwF}{-22.1}
+\newcommand{\trRecQwFci}{[-29.6, -14.7]}
+\newcommand{\trRecQwS}{-40.3}
+\newcommand{\trRecQwSci}{[-45.9, -34.7]}
+\newcommand{\trRecQwT}{-4.9}
+\newcommand{\trRecQwTci}{[-8.1, -1.8]}
+\newcommand{\withOptSelfMax}{100}
+\newcommand{\withOptSelfMin}{50}

@@ -126,5 +126,24 @@
   "robustness_v0_v3_wallclock": 1.99,
   "revision_E1_E2_E3_wallclock": 1.11,
   "note": "shard durations include model loading inside each shard run; robustness wall-clock includes the superseded first build of v2_no_ack"
+ },
+ "v4b_history_turns": {
+  "Qwen/Qwen2.5-7B-Instruct": 1800,
+  "Qwen/Qwen2.5-14B-Instruct-AWQ": 1800,
+  "mistralai/Mistral-7B-Instruct-v0.3": 1800,
+  "meta-llama/Llama-3.1-8B-Instruct": 1800,
+  "google/gemma-2-9b-it": 1800,
+  "Qwen/Qwen3-8B": 1800,
+  "allenai/Olmo-3-7B-Instruct": 1800,
+  "google/gemma-4-E4B-it": 1800
+ },
+ "review2_run": {
+  "date_utc": "2026-09-23",
+  "variants": [
+   "v5_format",
+   "v6_noconf",
+   "v4b_selfgen"
+  ],
+  "history_turn_decoding": "greedy, max_tokens=64, stop=chat-template control strings, min_tokens=1"
  }
 }

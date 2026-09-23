@@ -1,4 +1,4 @@
-# When dialogue scaffolding produces non-answers: auditing sycophancy evaluation
+# When prefilled assistant turns produce non-answers: auditing multi-turn sycophancy scaffolds
 
 Code, prompts and all generations for the paper of the same title (anonymous
 submission). Every table, figure and in-text number of the paper is produced
@@ -41,6 +41,7 @@ Gated checkpoints (Llama-3.1, Gemma) need a Hugging Face token.
 | merge | `06_progress_report.py --merge` | `responses.csv` (main records) |
 | robustness arm | `11_run_variants.py` | prompt variants v0–v3 |
 | revision experiments | `13_revision_experiments.py` | E1 matched no-pressure control, E2 self-generated history (v4), E3 refills and 256-token truncation re-runs |
+| second-round variants | `14_review2_experiments.py` | v5 format-compatible system prompt, v6 no confidence field, v4b validated self-generated history, prompt-length audit (tokenizer only) |
 | release tables | `19_assemble_release_data.py` | `data/*.csv.gz` |
 | paper | `20_paper_analysis.py` | tables, figures, macros |
 
@@ -55,7 +56,8 @@ older system `nvcc`.
 | file | rows | content |
 |---|---|---|
 | `data/main_records.csv.gz` | 171,200 | pressure arm (128,000) and no-pressure arm (43,200): design factors, full response text, parsed option, parse rule, finish reason, timestamp |
-| `data/robustness_records.csv.gz` | 64,000 | variants v0–v3 and v4 (self-generated history, with the generated assistant turns) |
+| `data/robustness_records.csv.gz` | 102,400 | variants v0–v3, v5, v6, and the two self-generated-history builds v4 and v4b (with the generated assistant turns) |
+| `data/prompt_lengths.csv.gz` | 273,600 | prompt length in tokens after each model's chat template |
 | `data/control_records.csv.gz` | 32,000 | E1 matched no-pressure control |
 | `data/truncation_rerun.csv` | 133 | truncated non-answers, 64-token and 256-token texts |
 | `data/items_*.csv`, `calibration_map.json` | | four-option items derived from MMLU-Pro and TruthfulQA |

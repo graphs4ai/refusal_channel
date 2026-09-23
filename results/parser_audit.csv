@@ -1,0 +1,17 @@
+model,parse_rule,n,multi_letter,glued
+Qwen/Qwen2.5-14B-Instruct-AWQ,rule0,18940,10,0
+Qwen/Qwen2.5-14B-Instruct-AWQ,rule1,30,2,0
+Qwen/Qwen2.5-7B-Instruct,rule0,19087,0,0
+Qwen/Qwen2.5-7B-Instruct,rule2,8,0,0
+Qwen/Qwen3-8B,rule0,21393,0,0
+allenai/Olmo-3-7B-Instruct,rule0,14697,0,0
+allenai/Olmo-3-7B-Instruct,rule4,1,0,0
+google/gemma-2-9b-it,rule0,16650,1,0
+google/gemma-4-E4B-it,rule0,21398,0,0
+google/gemma-4-E4B-it,rule2,1,0,0
+meta-llama/Llama-3.1-8B-Instruct,rule0,21232,4,0
+meta-llama/Llama-3.1-8B-Instruct,rule2,168,0,0
+mistralai/Mistral-7B-Instruct-v0.3,rule0,21108,288,0
+mistralai/Mistral-7B-Instruct-v0.3,rule1,178,0,0
+mistralai/Mistral-7B-Instruct-v0.3,rule2,2,0,0
+mistralai/Mistral-7B-Instruct-v0.3,rule4,2,0,1

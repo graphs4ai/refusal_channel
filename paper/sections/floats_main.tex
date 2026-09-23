@@ -3,7 +3,7 @@
 \includegraphics[width=\textwidth]{figures/fig_outcomes.pdf}
 \caption{Outcomes on incorrect suggestions by model, history (none, neutral,
 3/3, 0/3) and signal (b: bare assertion, c: credential). Each bar is 1{,}000
-records (200 probes $\times$ 5 replicates). Event counts are in
+records (200 probes $\times$ 5 prompt variants). Event counts are in
 Table~\ref{tab:outcome-counts}.}
 \label{fig:outcomes}
 \end{figure*}
@@ -11,8 +11,9 @@ Table~\ref{tab:outcome-counts}.}
 \begin{table*}[t]
 \centering\small
 \input{generated/tab_models}
-\caption{Models (release month of the checkpoint). Accuracy: greedy
-no-pressure baseline on the 300 no-pressure probes. Non-answer and truncated:
+\caption{Models (release month of the checkpoint). Accuracy: share correct among all
+greedy neutral no-pressure records used to define $B$ (300 probes $\times$
+prompt variants 0 and 2; non-answers count as incorrect). Non-answer and truncated:
 shares of the 16{,}000 pressure-arm records.}
 \label{tab:models}
 \end{table*}
@@ -23,48 +24,54 @@ shares of the 16{,}000 pressure-arm records.}
 \caption{History contrast (0/3 minus 3/3, pp [95\% CI]) under bare assertion
 of a wrong option, scored three ways in the original scaffold (1{,}000 records
 per history and model), and endorsement with self-generated assistant turns
-(100 probes, one replicate: 100 records per history and model). $^{*}$:
+(100 probes, prompt variant 0: 100 records per history and model). $^{*}$:
 Holm-adjusted $p<0.05$ over 8 models $\times$ 4 contrasts (first three
-columns) or Bonferroni over 8 models (last column). n.e.: no events in
-either group.}
+columns) or Bonferroni over 8 models (last column). n.e.: all outcomes
+identical in both groups, so the clustered interval is not estimable (not
+evidence of a zero effect).}
 \label{tab:scoring}
 \end{table*}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.85\textwidth]{figures/fig_robust.pdf}
-\caption{Non-answer rate in the four models with non-answers under five
-scaffolds (100 probes, one replicate). orig.: ``\texttt{Noted.}''; ack alt.: another acknowledgement; no
-asst.: no assistant turns; letter mand.: explicit instruction to give a
-letter; self-gen.: the model's own fixed replies. Each bar pools both signals and both suggestions (400 records). ``0'': no events.}
+\includegraphics[width=0.92\textwidth]{figures/fig_robust.pdf}
+\caption{Non-answer rate after 3/3 (solid) and 0/3 (hatched) histories under
+seven scaffolds (100 probes, prompt variant 0). orig: ``\texttt{Noted.}'';
+ack: another acknowledgement; no asst: no assistant turns; letter:
+explicit instruction to give a letter; fmt: system prompt consistent with the
+prefilled turns; no conf: no confidence field; self: the model's own
+fixed replies (v4b). Each bar pools both signals and both suggestions (400
+records). ``0'': no events.}
 \label{fig:robust}
 \end{figure*}
 
 \begin{table*}[t]
 \centering\small
 \resizebox{\textwidth}{!}{\input{generated/tab_variants}}
-\caption{Non-answer rate (events/records) by scaffold, pooling 3/3 and 0/3
-histories, both signals and both suggestions (100 probes, one replicate).}
+\caption{Non-answer rate (events) by scaffold, pooling 3/3 and 0/3
+histories, both signals and both suggestions (800 records per cell; 100
+probes, prompt variant 0).}
 \label{tab:variants}
 \end{table*}
 
 \begin{table*}[t]
 \centering\small
-\input{generated/tab_correct_suggestions}
-\caption{Endorsement of correct ($u{=}g$) and incorrect ($u{\neq}g$)
-suggestions after 3/3 and 0/3 records, bare assertion (1{,}000 records per
-cell). $\Delta$ selectivity: change from 3/3 to 0/3 in (endorse $\mid u{=}g$)
-$-$ (endorse $\mid u{\neq}g$), pp [95\% CI], $^{*}$ Holm over 16 tests
-(8 models $\times$ 2 signals). Recovery: share correct on correct suggestions
-among probes whose baseline was wrong.}
+\resizebox{\textwidth}{!}{\input{generated/tab_correct_suggestions}}
+\caption{Baseline-eligible transitions after 3/3 and 0/3 records, bare
+assertion. Recovery: share answering $g$ when the user suggests $g$ and the
+baseline was wrong. Correct-to-suggested: share endorsing a wrong suggestion
+when the baseline was correct. $n$: eligible records. $\Delta$: 0/3 minus
+3/3, pp [95\% CI]; $^{*}$ Holm over 16 tests per metric (8 models $\times$ 2
+signals). These rates are also affected by the non-answers of the four models
+in \S\ref{sec:scaffold}.}
 \label{tab:correct}
 \end{table*}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_null.pdf}
-\caption{Raw flip rate (no history, bare incorrect assertion; replicates not
-used to define $B$) and the rate in the matched no-pressure control with the
+\caption{Raw flip rate (no history, bare incorrect assertion; prompt variants
+not used to define $B$) and the rate in the matched no-pressure control with the
 same paraphrase and option order. Squares: difference with 95\% CI.}
 \label{fig:null}
 \end{figure}
@@ -74,6 +81,6 @@ same paraphrase and option order. Squares: difference with 95\% CI.}
 \resizebox{\textwidth}{!}{\input{generated/tab_null}}
 \caption{Raw and control-corrected flip rates, ranks (1 = most flips) with
 probe-bootstrap 95\% intervals, and two alternative nulls: a no-pressure
-replicate with different form, and sampling at $T{=}0.7$.}
+prompt variant with different paraphrase and option order, and sampling at $T{=}0.7$.}
 \label{tab:null}
 \end{table*}

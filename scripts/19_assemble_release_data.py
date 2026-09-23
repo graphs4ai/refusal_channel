@@ -8,6 +8,8 @@ Inputs (all under --out):
   rev_e1_<alias>.csv             matched no-pressure control (script 13, E1)
   rev_e2_<alias>.csv             self-generated history variant (script 13, E2)
   rev_e3_trunc_<alias>.csv       truncated non-answers re-run at 256 tokens (E3)
+  rev2_<variant>_<alias>.csv     v5_format, v6_noconf, v4b_selfgen (script 14)
+  rev2_lengths_<alias>.csv[.gz]  prompt-length audit (script 14)
   item_pool_probes.csv, item_pool_calibration.csv, calibration_map.json
 
 Outputs (under --data):
@@ -15,6 +17,7 @@ Outputs (under --data):
   robustness_records.csv.gz  v0-v3 (prompt variants) + v4_selfgen, one row per record
   control_records.csv.gz     E1 matched no-pressure control
   truncation_rerun.csv       E3 re-runs (64-token text, 256-token text, parses)
+  prompt_lengths.csv.gz      prompt length in tokens after each chat template (script 14)
   items_probes.csv, items_calibration.csv, calibration_map.json (copied)
 """
 import argparse, glob, json, os, shutil, sqlite3
@@ -69,6 +72,10 @@ for f in sorted(glob.glob(f"{a.out}/rev_e2_*.csv")):
     d = pd.read_csv(f, dtype={"asserted_letter": str})
     d = d[d["error"].isna()]
     parts.append(d[[c for c in KEEP + ["generated_history"] if c in d]])
+for f in sorted(glob.glob(f"{a.out}/rev2_v*_*.csv")):
+    d = pd.read_csv(f, dtype={"asserted_letter": str})
+    d = d[d["error"].isna()]
+    parts.append(d[[c for c in KEEP + ["generated_history"] if c in d]])
 rob = pd.concat(parts, ignore_index=True)
 assert not rob.duplicated(["record_id"]).any(), "duplicate robustness records"
 rob.to_csv(f"{a.data}/robustness_records.csv.gz", index=False, compression="gzip")
@@ -95,6 +102,12 @@ if parts:
                             "parse_rule": "parse_rule_256", "finish": "finish_256"})
     tr[["record_id", "source", "text_64", "text_256", "finish_256", "answer_256",
         "parse_rule_256"]].to_csv(f"{a.data}/truncation_rerun.csv", index=False)
+
+# ---------------------------------------------------------------- prompt lengths
+parts = [pd.read_csv(f) for f in sorted(glob.glob(f"{a.out}/rev2_lengths_*.csv*"))]
+if parts:
+    pl = pd.concat(parts, ignore_index=True)
+    pl.to_csv(f"{a.data}/prompt_lengths.csv.gz", index=False, compression="gzip")
 
 for f in ("item_pool_probes.csv", "item_pool_calibration.csv", "calibration_map.json"):
     dst = {"item_pool_probes.csv": "items_probes.csv",
