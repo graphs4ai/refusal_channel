@@ -34,6 +34,23 @@ from sycodef.variants import ACK_ALT  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA, RES = ROOT / "data", ROOT / "results"
+
+# Results are written with 10 significant digits and values are rounded to 9
+# decimals before formatting, so that BLAS-level differences between machines
+# (~1e-13) cannot change a CSV byte or flip a rounding boundary in a table.
+_to_csv = pd.DataFrame.to_csv
+
+
+def _to_csv_fixed(self, *args, **kw):
+    kw.setdefault("float_format", "%.10g")
+    return _to_csv(self, *args, **kw)
+
+
+pd.DataFrame.to_csv = _to_csv_fixed
+
+
+def r9(v):
+    return round(float(v), 9)
 GEN, FIG = ROOT / "paper" / "generated", ROOT / "paper" / "figures"
 for p in (RES, GEN, FIG):
     p.mkdir(parents=True, exist_ok=True)
@@ -60,12 +77,14 @@ def num(name: str, value, fmt="{:.3f}"):
     """Register an in-text number as a LaTeX macro \\<name>."""
     assert re.fullmatch(r"[A-Za-z]+", name), name
     assert not name.startswith("end"), f"LaTeX forbids macro names starting with 'end': {name}"
+    if isinstance(value, (float, np.floating)):
+        value = r9(value)
     NUM[name] = value if isinstance(value, str) else fmt.format(value)
     return NUM[name]
 
 
 def pct(x, d=1):
-    return f"{100 * x:.{d}f}"
+    return f"{r9(100 * x):.{d}f}"
 
 
 def mname(m):  # macro-safe model tag
@@ -169,8 +188,8 @@ def fmt_pp(r, stars=True):
     if not np.isfinite(r["diff"]):
         return "n.a."
     if not np.isfinite(r.get("lo", np.nan)):
-        return f"{100 * r['diff']:+.1f} (n.e.)"
-    s = f"{100 * r['diff']:+.1f} [{100 * r['lo']:+.1f}, {100 * r['hi']:+.1f}]"
+        return f"{r9(100 * r['diff']):+.1f} (n.e.)"
+    s = f"{r9(100 * r['diff']):+.1f} [{r9(100 * r['lo']):+.1f}, {r9(100 * r['hi']):+.1f}]"
     if stars and np.isfinite(r.get("p_holm", np.nan)) and r["p_holm"] < 0.05:
         s += "$^{*}$"
     return s
@@ -996,10 +1015,10 @@ def tab_pooled():
     out = []
     for r in t.itertuples():
         out.append([lab.get(r.outcome, r.outcome),
-                    f"{100 * r.pooled_naive:+.1f} [{100 * r.pooled_naive_lo:+.1f}, "
-                    f"{100 * r.pooled_naive_hi:+.1f}]",
-                    f"{100 * r.pooled_model_fe:+.1f}",
-                    f"{100 * r.within_min:+.1f} to {100 * r.within_max:+.1f}",
+                    f"{r9(100 * r.pooled_naive):+.1f} [{r9(100 * r.pooled_naive_lo):+.1f}, "
+                    f"{r9(100 * r.pooled_naive_hi):+.1f}]",
+                    f"{r9(100 * r.pooled_model_fe):+.1f}",
+                    f"{r9(100 * r.within_min):+.1f} to {r9(100 * r.within_max):+.1f}",
                     f"{r.n_within_pos}/{r.n_within_neg}"])
     latex_table(pd.DataFrame(out), "lrrrr",
                 "Outcome & Pooled [95\\% CI] & Model FE & Within-model range & $+$/$-$",
