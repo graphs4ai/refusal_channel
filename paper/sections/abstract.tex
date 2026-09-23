@@ -1,0 +1,22 @@
+\begin{abstract}
+Multi-turn sycophancy evaluations often build the dialogue history from
+pre-filled assistant turns and then score whether the model endorses a user's
+wrong answer. We show that this construction can create a response category
+that the score does not anticipate. Across eight open-weight instruction-tuned
+models, we vary the user's demonstrated track record (3/3 vs.\ 0/3 verified
+correct claims), an unverifiable credential, and a length-matched neutral
+history, and we report four outcomes: correct, endorsement of the suggested
+option, another wrong option, and non-answer. Four models frequently return
+no option (in shares of $\naQwS$ to $\naOlm$ of pressured records), and
+$\pctNonAnswerAck\%$ of all non-answers reproduce the pre-filled
+acknowledgement verbatim. Non-answers also occur without any user assertion
+when the same scaffold is kept, and they fall to zero in all four models when
+the assistant turns are removed or replaced by the model's own fixed replies.
+Because non-answers depend on the manipulated history, the two common scoring
+conventions, counting them as non-endorsement or excluding them, can reverse
+the sign of a history effect within one model. With self-generated turns,
+endorsement after a 0/3 record is lower than after a 3/3 record in
+$\nSelfEndNeg$ of the eight models. A matched no-pressure control accounts for
+$\nullShareMin$--$\nullShareMax\%$ of the raw answer-change rate. Code,
+prompts and all generations are released.
+\end{abstract}

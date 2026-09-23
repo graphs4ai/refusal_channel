@@ -1,0 +1,8 @@
+# Coleta local na RTX 3090. Instalar DEPOIS de requirements.txt.
+# vllm já traz o torch compatível; não fixe o torch à mão salvo necessidade.
+vllm>=0.6.0
+transformers>=4.44
+accelerate>=0.33
+huggingface_hub>=0.24
+# só para os modelos AWQ (Qwen2.5-14B-Instruct-AWQ):
+autoawq>=0.2.6

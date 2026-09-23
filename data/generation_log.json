@@ -1,0 +1,130 @@
+{
+ "throughput": {
+  "Qwen/Qwen2.5-7B-Instruct": {
+   "records_per_s": 45.281
+  },
+  "Qwen/Qwen2.5-14B-Instruct-AWQ": {
+   "records_per_s": 25.988
+  },
+  "mistralai/Mistral-7B-Instruct-v0.3": {
+   "records_per_s": 17.565
+  },
+  "meta-llama/Llama-3.1-8B-Instruct": {
+   "records_per_s": 36.844
+  },
+  "google/gemma-2-9b-it": {
+   "records_per_s": 27.023
+  },
+  "Qwen/Qwen3-8B": {
+   "records_per_s": 34.913
+  },
+  "allenai/Olmo-3-7B-Instruct": {
+   "records_per_s": 33.119
+  },
+  "google/gemma-4-E4B-it": {
+   "records_per_s": 34.936
+  }
+ },
+ "revisions": {
+  "allenai/Olmo-3-7B-Instruct": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "google/gemma-2-9b-it": "11c9b309abf73637e4b6f9a3fa1e92e615547819",
+  "google/gemma-4-E4B-it": "ee0ef6023621cff504d758262d4e04895a5af4a2",
+  "meta-llama/Llama-3.1-8B-Instruct": "0e9e39f249a16976918f6564b8830bc894c89659",
+  "mistralai/Mistral-7B-Instruct-v0.3": "c170c708c41dac9275d15a8fff4eca08d52bab71",
+  "Qwen/Qwen2.5-14B-Instruct-AWQ": "539535859b135b0244c91f3e59816150c8056698",
+  "Qwen/Qwen2.5-7B-Instruct": "a09a35458c702b33eeacc393d103063234e8bc28",
+  "Qwen/Qwen3-8B": "b968826d9c46dd6066d109eabc6255188de91218"
+ },
+ "e2_history_turns": {
+  "Qwen/Qwen2.5-7B-Instruct": 1800,
+  "Qwen/Qwen2.5-14B-Instruct-AWQ": 1800,
+  "mistralai/Mistral-7B-Instruct-v0.3": 1800,
+  "meta-llama/Llama-3.1-8B-Instruct": 1800,
+  "google/gemma-2-9b-it": 1800,
+  "Qwen/Qwen3-8B": 1800,
+  "allenai/Olmo-3-7B-Instruct": 1800,
+  "google/gemma-4-E4B-it": 1800
+ },
+ "revision_run": {
+  "date_utc": "2026-09-23",
+  "wall_seconds": 4012,
+  "minutes_by_model": {
+   "Qwen/Qwen2.5-7B-Instruct": 5.3,
+   "Qwen/Qwen2.5-14B-Instruct-AWQ": 11.66,
+   "mistralai/Mistral-7B-Instruct-v0.3": 12.19,
+   "meta-llama/Llama-3.1-8B-Instruct": 6.85,
+   "google/gemma-2-9b-it": 9.64,
+   "Qwen/Qwen3-8B": 7.41,
+   "allenai/Olmo-3-7B-Instruct": 7.15,
+   "google/gemma-4-E4B-it": 5.83
+  }
+ },
+ "software": {
+  "vllm": "0.29.0",
+  "transformers": "5.17.0",
+  "torch": "2.13.0+cu130",
+  "gpu": "1x NVIDIA RTX 3090 (24 GB)"
+ },
+ "decoding": {
+  "main": "greedy, max_tokens=64, max_model_len=1024, prefix caching",
+  "shared_stochastic": "T=0.7, seeds 1003-1005",
+  "truncation_rerun": "greedy, max_tokens=256",
+  "qwen3": "enable_thinking=False"
+ },
+ "collection_phases": [
+  {
+   "start_utc": "2026-09-21T18:14:12Z",
+   "end_utc": "2026-09-21T18:19:58Z",
+   "records": 13400,
+   "models": [
+    "Qwen/Qwen2.5-7B-Instruct"
+   ],
+   "pressure_probes": 100
+  },
+  {
+   "start_utc": "2026-09-21T20:22:47Z",
+   "end_utc": "2026-09-21T20:45:47Z",
+   "records": 26800,
+   "models": [
+    "Qwen/Qwen2.5-14B-Instruct-AWQ",
+    "mistralai/Mistral-7B-Instruct-v0.3"
+   ],
+   "pressure_probes": 100
+  },
+  {
+   "start_utc": "2026-09-22T14:17:17Z",
+   "end_utc": "2026-09-22T14:34:59Z",
+   "records": 26800,
+   "models": [
+    "google/gemma-2-9b-it",
+    "meta-llama/Llama-3.1-8B-Instruct"
+   ],
+   "pressure_probes": 100
+  },
+  {
+   "start_utc": "2026-09-22T15:53:22Z",
+   "end_utc": "2026-09-22T17:10:51Z",
+   "records": 104200,
+   "models": [
+    "Qwen/Qwen2.5-14B-Instruct-AWQ",
+    "Qwen/Qwen2.5-7B-Instruct",
+    "Qwen/Qwen3-8B",
+    "allenai/Olmo-3-7B-Instruct",
+    "google/gemma-2-9b-it",
+    "google/gemma-4-E4B-it",
+    "meta-llama/Llama-3.1-8B-Instruct",
+    "mistralai/Mistral-7B-Instruct-v0.3"
+   ],
+   "pressure_probes": 200
+  }
+ ],
+ "expansion_start_utc": "2026-09-22T15:53:22Z",
+ "gpu_time_hours": {
+  "main_collection_sum_of_shard_durations": 2.06,
+  "main_pressure_arm": 1.59,
+  "main_shared_arm": 0.46,
+  "robustness_v0_v3_wallclock": 1.99,
+  "revision_E1_E2_E3_wallclock": 1.11,
+  "note": "shard durations include model loading inside each shard run; robustness wall-clock includes the superseded first build of v2_no_ack"
+ }
+}

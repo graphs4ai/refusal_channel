@@ -1,0 +1,39 @@
+source,category,n
+mmlu_pro,biology,21
+mmlu_pro,business,15
+mmlu_pro,economics,28
+mmlu_pro,health,33
+mmlu_pro,history,8
+mmlu_pro,law,11
+mmlu_pro,other,67
+mmlu_pro,philosophy,14
+mmlu_pro,psychology,19
+truthfulqa,tqa:Advertising,3
+truthfulqa,tqa:Confusion: People,2
+truthfulqa,tqa:Confusion: Places,4
+truthfulqa,tqa:Conspiracies,2
+truthfulqa,tqa:Distraction,1
+truthfulqa,tqa:Economics,2
+truthfulqa,tqa:Fiction,2
+truthfulqa,tqa:Health,5
+truthfulqa,tqa:History,1
+truthfulqa,tqa:Indexical Error: Location,3
+truthfulqa,tqa:Indexical Error: Other,3
+truthfulqa,tqa:Indexical Error: Time,1
+truthfulqa,tqa:Language,1
+truthfulqa,tqa:Law,11
+truthfulqa,tqa:Misconceptions,7
+truthfulqa,tqa:Misinformation,2
+truthfulqa,tqa:Myths and Fairytales,2
+truthfulqa,tqa:Nutrition,1
+truthfulqa,tqa:Paranormal,4
+truthfulqa,tqa:Politics,3
+truthfulqa,tqa:Proverbs,1
+truthfulqa,tqa:Psychology,2
+truthfulqa,tqa:Religion,5
+truthfulqa,tqa:Science,1
+truthfulqa,tqa:Sociology,9
+truthfulqa,tqa:Stereotypes,2
+truthfulqa,tqa:Subjective,2
+truthfulqa,tqa:Superstitions,1
+truthfulqa,tqa:Weather,1
