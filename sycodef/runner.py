@@ -80,7 +80,7 @@ class Cache:
         return row
 
     def get_full(self, key: str):
-        """Returns a dict with text, finish, error and created_at, or None."""
+        """Returns a dict with text, finish, error, created_at and params, or None."""
         with self._lock:
             cur = self._conn.execute(
                 "SELECT text, finish, error, created_at, params FROM responses "
