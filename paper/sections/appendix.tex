@@ -131,8 +131,8 @@ question) and matches in which the letter is the first character of a word
 ($\nGlued$). Excluding all flagged records changes no model's primary history
 contrast on conditional endorsement by more than $\maxChangeParserFlags$~pp.
 A stratified sample of $\nParserSample$ parsed outputs (by model and rule) is
-released in \texttt{results/parser\_audit\_sample.csv} for manual
-verification; it has not been annotated by people. Table~\ref{tab:taxonomy} classifies every non-answer
+released in \texttt{results/parser\_audit\_sample.csv} to facilitate
+external manual inspection; we have not annotated it. Table~\ref{tab:taxonomy} classifies every non-answer
 deterministically: the acknowledgement alone; the acknowledgement followed
 by other text; an option's text without its letter; a letter that no rule
 captured; output cut at the token limit; other. Of the non-answers,
@@ -169,8 +169,11 @@ one; only the current build is analysed and released.
 the conversation is built turn by turn. At each assistant position the
 model's chat template is rendered over all preceding messages and one greedy
 assistant turn is generated with stop strings for every chat-template control
-sequence of the eight models and a minimum of one token; the turn is then
-checked to be non-empty and free of template sequences. Contexts that are
+sequence of the eight models and a minimum of one token. Each turn is then
+checked for emptiness and for template sequences; turns are not regenerated
+when a check fails, and the result is reported in Table~\ref{tab:selfgen}.
+A turn is empty when the model produces no text before ending its turn or
+emitting a template sequence. Contexts that are
 identical across records (the history does not depend on the signal or the
 suggestion) share one generation, so each model has $\nSelfTurnsUnique$ unique
 history turns, replayed unchanged in all four signal/suggestion records of

@@ -24,9 +24,10 @@ shares of the 16{,}000 pressure-arm records.}
 \caption{History contrast (0/3 minus 3/3, pp [95\% CI]) under bare assertion
 of a wrong option, scored three ways in the original scaffold (1{,}000 records
 per history and model), and endorsement with self-generated assistant turns
-(100 probes, prompt variant 0: 100 records per history and model). $^{*}$:
-Holm-adjusted $p<0.05$ over 8 models $\times$ 4 contrasts (first three
-columns) or Bonferroni over 8 models (last column). n.e.: all outcomes
+(100 probes, prompt variant 0: 100 records per history and model). For each
+of the first three outcome definitions, $^{*}$ marks Holm-adjusted $p<0.05$
+over the 8 models $\times$ 4 primary contrasts; the self-generated column uses
+Bonferroni correction over 8 models. n.e.: all outcomes
 identical in both groups, so the clustered interval is not estimable (not
 evidence of a zero effect).}
 \label{tab:scoring}
@@ -79,8 +80,10 @@ same paraphrase and option order. Squares: difference with 95\% CI.}
 \begin{table*}[t]
 \centering\small
 \resizebox{\textwidth}{!}{\input{generated/tab_null}}
-\caption{Raw and control-corrected flip rates, ranks (1 = most flips) with
-probe-bootstrap 95\% intervals, and two alternative nulls: a no-pressure
+\caption{Raw flip rate, matched no-pressure flip rate and their difference
+(95\% CI from a linear probability model on the stacked pairs, SE clustered
+on probe), ranks (1 = most flips) with probe-bootstrap 95\% intervals, and two
+alternative nulls: a no-pressure
 prompt variant with different paraphrase and option order, and sampling at $T{=}0.7$.}
 \label{tab:null}
 \end{table*}

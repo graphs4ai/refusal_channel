@@ -32,14 +32,14 @@ models, with every event count reported (\S\ref{sec:outcomes}).
 $\pctNonAnswerAck\%$ are verbatim copies of the prefilled acknowledgement;
 they occur in a matched condition with no user assertion; their rate moves in
 either direction, and into models that had none, with small changes to the
-system prompt; and they nearly vanish when the assistant turns are removed or
-replaced by the model's own replies (\S\ref{sec:scaffold}).
+system prompt; and they fall to very low rates when the assistant turns are
+removed or replaced by the model's own replies (\S\ref{sec:scaffold}).
 \item A demonstration that two plausible rules for handling non-answers can
 reverse the sign of the same history contrast, and an exploratory estimate of
 that contrast in variants without the artefact (\S\ref{sec:scoring}).
-\item A matched no-pressure control that estimates the excess answer-change
-rate associated with the assertion beyond answer instability under the same
-prompt form and option order (\S\ref{sec:null}).
+\item A matched no-pressure control that quantifies answer instability under
+the same prompt form and option order, providing a reference against which
+pressured flip rates can be interpreted (\S\ref{sec:null}).
 \end{enumerate}
 Code, prompts, generations and the scripts that produce every number in this
 paper are available at \repourl.
@@ -93,12 +93,16 @@ and the TruthfulQA generation split \citep{lin-etal-2022-truthfulqa}. From
 MMLU-Pro we excluded computational categories (mathematics, physics,
 engineering, chemistry, computer science) and kept stems of 25--180 characters
 that end in a question mark and contain no formula or blank; the three
-distractors were sampled from the original wrong options. For TruthfulQA the
-options are the best answer, the first listed incorrect answer (a popular
-misconception) and two further incorrect answers. Each item has one base
+distractors were sampled from the original wrong options. The category
+exclusion was fixed when the item pool was built, before any collection,
+because in these categories the answer is typically derived by calculation,
+so a user assertion would confound deference with arithmetic verification. For TruthfulQA the
+options are the best answer, the first listed incorrect answer and two
+further incorrect answers. Each item has one base
 option order, shuffled once with a fixed seed; prompts then present either
 this order or its rotation by one position (below). The suggested wrong option
-is a random distractor for MMLU-Pro and the misconception for TruthfulQA. The
+is a random distractor for MMLU-Pro and the first listed incorrect answer for
+TruthfulQA. The
 pressure arm uses $\nProbeP$ probes ($\nProbeMMLU$ MMLU-Pro, $\nProbeTQA$
 TruthfulQA); the no-pressure arm uses $\nProbeShared$ probes including these.
 Each probe has three history items from categories other than its own, with
@@ -115,9 +119,9 @@ three user claims are verified correct; in \textbf{0/3} all are verified
 wrong. The \textbf{neutral} history shows the same items and turn structure,
 but the user only pastes the questions ``as context'' and the verification
 turn records no answer; it carries no information about reliability and has
-the same structure and, within $\lenFillerDiffMax\%$, the same length in
-tokens as the 3/3 and 0/3 histories (mean $\lenFillerMean$ vs.\
-$\lenInfoMean$ tokens; $\lenNoneMean$ with no history). \textbf{None} has no history. The final user turn presents the probe
+the same structure and nearly the same token length as the informative
+histories (mean $\lenFillerMean$ tokens for neutral versus $\lenInfoMean$ for
+3/3 and 0/3; no-history prompts average $\lenNoneMean$ tokens). \textbf{None} has no history. The final user turn presents the probe
 with an assertion, either \textbf{bare} (``I'm sure the answer is C.'') or
 with a self-asserted \textbf{credential} (e.g., twenty years of university
 teaching). The asserted option is wrong (\emph{incorrect suggestion}) or right
@@ -149,10 +153,13 @@ last are written by the experimenter.}
 $\times$ signal (2) $\times$ suggestion (2) $\times$ 200 probes $\times$ 5
 deterministic prompt variants per model. For probe $k$ and variant $r$, the
 paraphrase is $(k{+}r) \bmod 3$ and the option order is the base order or its
-rotation, by $(k{+}r) \bmod 2$; the rounds of the history in which the user is
-right or wrong are counterbalanced by a random rotation. Because decoding is
-greedy, the output is deterministic given each constructed prompt, so these
-are prompt variants rather than stochastic replicates. The no-pressure arm
+rotation, by $(k{+}r) \bmod 2$. The three history items of a probe are always
+presented in the same order; in 3/3 and 0/3 all three rounds have the same
+status, so no counterbalancing of rounds is involved. Because we do not
+sample, these runs are prompt variants rather than stochastic sampling
+replicates. Re-running the original scaffold reproduced $\detAgree\%$ of the
+parsed answers (\S\ref{sec:scaffold}), so execution-level reproducibility is
+high but not perfect. The no-pressure arm
 (300 probes) has a neutral probe, a neutral reformulation and an ``Are you
 sure?'' follow-up, each with three greedy prompt variants ($r{=}0,1,2$) and
 three samples at $T{=}0.7$ in the base option order. Table~\ref{tab:manifest}
@@ -189,10 +196,17 @@ points (pp), estimated separately for each model by a linear probability model
 with standard errors clustered on probe; 95\% intervals are Wald intervals from
 these errors. Primary contrasts are the history contrast (0/3 minus 3/3)
 within each signal and the credential contrast within 3/3 and within 0/3.
-Each outcome definition is its own multiplicity family, and within it we apply
-Holm's correction \citep{holm-1979-simple} across the 32 tests formed by 8
-models and 4 contrasts; $^{*}$ marks $p_{\text{Holm}}<0.05$ (the families are
-listed in Appendix~\ref{app:contrasts}). When all observations in both
+For the primary four-outcome analyses, each outcome definition forms a
+separate multiplicity family of 32 tests (8 models $\times$ 4 contrasts),
+corrected with Holm's method \citep{holm-1979-simple}; $^{*}$ marks
+$p_{\text{Holm}}<0.05$. The baseline-eligible transitions
+(Table~\ref{tab:correct}) and the scaffold-robustness contrasts
+(Table~\ref{tab:variant-endorse}) form their own families, defined in those
+tables. For the matched no-pressure comparison (Table~\ref{tab:null}), the
+difference in flip rates and its interval come from the same linear
+probability model fitted to the stacked pressured and control records, with
+standard errors clustered on probe; each cluster contains both members of
+every pair. When all observations in both
 contrasted cells are identical (e.g., no events), the clustered Wald variance
 degenerates; we then report the point difference and mark the interval as
 unavailable (n.e.), which is not evidence that the effect is exactly zero.
@@ -231,7 +245,8 @@ No non-answer contains an explicit abstention phrase (``I cannot'',
 Mistral outputs. The final user turn has the same form as the history claims
 that the prefilled assistant answered with
 ``\texttt{Noted.}''
-(Figure~\ref{fig:prompt}), and these models continue the pattern.
+(Figure~\ref{fig:prompt}), making pattern continuation a plausible
+explanation for the copied responses.
 
 \paragraph{They occur without pressure.} In the matched no-pressure control
 the dialogue is identical, including history, paraphrase and option order,
@@ -263,12 +278,15 @@ Qwen3-8B ($\naFormatQwT$), which had none. Removing the confidence field from
 the system prompt raises the rate in all four models and produces non-answers
 in Mistral-7B ($\naNoConfMis$) and Qwen3-8B ($\naNoConfQwT$). In both
 variants $\copyFormatMin$--$\copyNoConfMax\%$ of the non-answers of the
-affected models are again the prefilled string. The conflict between the
-prefilled turns and the system prompt therefore does not by itself explain
-the artefact: its size changes in either direction with small changes of the
-instruction, while its form stays the same.
+affected models are again the prefilled string. Incompatibility between the
+system prompt and the prefilled turns appears to contribute substantially for
+some models, but it cannot explain all cases: Olmo-3 retains a high
+non-answer rate ($\naFormatOlm$) under the format-compatible prompt. The new
+non-answers in Llama-3.1 and Qwen3 further show strong prompt sensitivity,
+although this variant also adds an explicit ``\texttt{Noted.}'' cue to the
+system prompt and therefore does not isolate compatibility alone.
 
-\paragraph{They disappear without experimenter-written assistant turns.}
+\paragraph{They nearly disappear without experimenter-written assistant turns.}
 Removing all assistant turns (the history is merged into one user turn) gives
 $\noAckEvents$ non-answers in $\noAckN$ records. Replacing each
 acknowledgement by the model's own greedy reply to the same context, generated
@@ -276,12 +294,19 @@ turn by turn and then fixed (Appendix~\ref{app:selfgen}), gives $\nNASelf$ in
 $\nNASelfN$ records across the eight models (at most $\maxNASelf\%$ for any
 model). This self-generated-history variant still presents a preconstructed
 history at the final turn, and it changes the content of the assistant turns
-as well as their origin: $\withOptSelfMin$--$\withOptSelfMax\%$ of the
-generated turns contain an ``\texttt{Answer: X}'' reply, and Gemma-2 ends its
-turn immediately after every verification message, so half of its history
-turns are empty (Table~\ref{tab:selfgen}). The re-run of the original
+as well as their origin: across models, $\withOptSelfMin$--$\withOptSelfMax\%$
+of the generated turns contain an ``\texttt{Answer: X}'' reply. The validated
+build contains no chat-template sequences, but Gemma-2 ends its turn
+immediately after every verification message, so $\emptySelfGtwo\%$ of its
+history turns are empty ($\emptySelfMis\%$ for Mistral-7B;
+Table~\ref{tab:selfgen}). The re-run of the original
 scaffold in the robustness arm reproduces the corresponding main-arm parsed
-answers in $\detAgree\%$ of $\detN$ matched records.
+answers in $\detAgree\%$ of $\detN$ matched records ($\detSameText\%$ of the
+texts are identical). The $\detDisagree$ disagreements occur in all
+$\detDisagreeModels$ models, and $\detDisagreeNA$ of them are an answer in one
+run and a non-answer in the other, in both directions. The two runs used
+different batch compositions, and batched GPU inference is not guaranteed to
+be batch-invariant; we did not verify that this is the cause.
 
 \subsection{Handling of non-answers changes the history contrast}
 \label{sec:scoring}
@@ -298,20 +323,22 @@ general: the first treats a copied acknowledgement as resistance, and the
 second conditions on an outcome of the treatment.
 
 In the self-generated-history variant there are almost no non-answers, so the
-two rules coincide. There, endorsement after a 0/3 record is lower than after
-3/3 in $\nSelfEndNeg$ models (Appendix Table~\ref{tab:variant-endorse}, both
-signals pooled; e.g.\ Qwen3-8B $\selfEndQwT$~pp, Qwen2.5-14B-AWQ
+two rules coincide. There, endorsement after a 0/3 record is significantly
+lower than after 3/3, after multiplicity correction, in six models; it is also
+numerically lower for Mistral-7B, giving a negative contrast in seven of the
+eight models (Appendix Table~\ref{tab:variant-endorse}, both signals pooled; e.g.\ Qwen3-8B $\selfEndQwT$~pp, Qwen2.5-14B-AWQ
 $\selfEndQwF$~pp, Llama-3.1-8B $\selfEndLla$~pp). The estimates for Mistral-7B
 ($\selfEndMis$~pp) and Olmo-3-7B ($\selfEndOlm$~pp) are smaller and not
 significant after correction; we do not interpret this as evidence of
 equivalence. Because the variant changes the content of the assistant turns
 and was run on 100 probes with one prompt variant, we treat it as a
 diagnostic robustness condition rather than as an identified estimate of the
-causal effect of the track record. Pooling the eight models into one estimate
-does not reverse the sign of the contrast (Appendix Table~\ref{tab:pooling}).
+causal effect of the track record. For the original scaffold under a bare
+incorrect assertion, pooling the eight models likewise does not reverse the
+sign of the history contrast (Appendix Table~\ref{tab:pooling}).
 
-\paragraph{Credentials.} After a 0/3 record, where the credential
-contradicts the track record, adding it raises endorsement among answered
+\paragraph{Credentials.} After a 0/3 record, where the self-asserted
+credential is in tension with the observed track record, adding it raises endorsement among answered
 records in five models, e.g.\ $\dECCbLla$~pp for Llama-3.1-8B and
 $\dECCbQwT$~pp for Qwen3-8B, against $\dECCgLla$ and $\dECCgQwT$~pp after a
 3/3 record (Appendix Table~\ref{tab:contrast-ec}). For the models with
@@ -341,9 +368,9 @@ history-dependent non-answers.
 \subsection{A matched null for answer changes}
 \label{sec:null}
 
-A flip rate under pressure combines changes associated with the user
-assertion with ordinary answer instability across otherwise matched prompt
-realisations. For the canonical cell (no history, bare incorrect assertion)
+A flip rate under pressure mixes answer changes that co-occur with the
+user assertion with ordinary answer instability across otherwise matched
+prompt realisations. For the canonical cell (no history, bare incorrect assertion)
 we compare each pressured record with the matched no-pressure control record
 that has the same paraphrase and option order, using only prompt variants not
 used to define $B$ (Figure~\ref{fig:null}, Table~\ref{tab:null}). The control
@@ -351,10 +378,17 @@ flips in $\nullMin$--$\nullMax$ of records, so the matched no-pressure flip
 rate is $\nullShareMin$--$\nullShareMax\%$ as large as the raw pressured rate.
 Other choices of null give different values: a no-pressure prompt variant with
 different paraphrase and option order flips in $\formNullMin$--$\formNullMax$,
-and sampling at $T{=}0.7$ in $\stoNullMin$--$\stoNullMax$. A null is only
-comparable if it holds the surface form fixed, as the matched control does.
-Subtracting the matched null changes the ranking of the eight models only
-slightly: Kendall's $\tau=\tauPoint$ between raw and corrected rates
+and sampling at $T{=}0.7$ in $\stoNullMin$--$\stoNullMax$. For the comparison
+intended here, the most directly comparable null holds the surface form
+fixed, as the matched control does. Record by record, the pressured answer
+differs from $B$ while its matched control does not in
+$\pairPOnlyMin$--$\pairPOnlyMax\%$ of pairs, the reverse happens in
+$\pairCOnlyMin$--$\pairCOnlyMax\%$, and both differ in
+$\pairBothMin$--$\pairBothMax\%$. The difference between the two rates is a
+descriptive contrast, not a decomposition of individual flips into causes.
+The difference between the pressured and matched no-pressure flip rates
+changes the ranking of the eight models only slightly: Kendall's $\tau=\tauPoint$ between the rankings by raw flip rate and by the
+difference
 ($\nDiscordant$ of 28 pairs discordant), with a probe-bootstrap interval of
 $[\tauLo, \tauHi]$ ($\nBoot$ resamples). The bootstrap rank intervals of the
 five lowest-ranked models overlap, so their order is not determined by these
@@ -368,9 +402,9 @@ data.
 scaffold, four models often answer the final question by repeating the
 prefilled acknowledgement, and that the rate of this copied response depends
 on the manipulated history, the signal and small details of the system
-prompt. The non-answers are not a separate abstention behaviour: they occur
-without pressure for two models and vanish when the experimenter-written
-assistant turns are removed or replaced. Calling them ``refusals'' would
+prompt. The non-answers are not well described as an abstention behaviour: they
+occur without pressure for two models and are reduced to very low rates when
+the experimenter-written assistant turns are removed or replaced. Calling them ``refusals'' would
 overstate what they show. The more limited inference concerns how the track
 record changes endorsement once the artefact is removed; there the
 self-generated variant points to lower endorsement after a 0/3 record in most
@@ -382,8 +416,10 @@ recovery when the user is right.
 (ii) Check whether the model's final reply copies a prefilled turn, and
 compare with a variant in which the assistant turns are generated by the model
 or removed. (iii) Estimate history and credential effects within each level of
-the other factors and within each model. (iv) Subtract a matched no-pressure
-control, built from the same dialogue, before interpreting a flip rate.
+the other factors and within each model. (iv) Report a matched no-pressure
+control built from the same dialogue alongside the pressured flip rate, and
+interpret their difference as a descriptive contrast rather than a causal
+decomposition.
 (v) Release the generations, since several of the problems above were visible
 only in the raw text.
 
@@ -413,8 +449,9 @@ is always three rounds, 0/3 and 3/3 are extreme records, and the user's
 earlier answers and the verification turn jointly establish the record, so
 the design does not isolate the effect of the verification text. The
 self-generated variant changes both the origin and the content of the
-assistant turns (Gemma-2's replies to verification messages are empty), and
-it and the other robustness variants were run on 100 probes with one prompt
+assistant turns (for Gemma-2, only half of the validated turns contain an
+``\texttt{Answer: X}'' reply and the other half are empty;
+Table~\ref{tab:selfgen}), and it and the other robustness variants were run on 100 probes with one prompt
 variant. The parser was checked automatically and all non-answers were
 categorised, but no parsed output was annotated by people. Non-significant
 differences are not evidence of equivalence. The pressure design, the
@@ -431,7 +468,7 @@ the comparisons between conditions on the same items.
 The study uses public benchmarks and open-weight models, involves no human
 participants and collects no personal data. The credential prompts describe
 fictitious users. Released generations may contain incorrect statements from
-TruthfulQA misconceptions and should not be used as factual answers. AI
+incorrect TruthfulQA answer options and should not be used as factual answers. AI
 assistants were used for code development, translation of code comments and
 editing of the manuscript; all analyses, numbers and claims were checked by
 the authors against the released data.

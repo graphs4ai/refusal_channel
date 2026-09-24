@@ -584,7 +584,13 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
         ye = np.r_[g.endorse.astype(float), g.ctl_endorse.astype(float)]
         ge = np.r_[np.ones(len(g)), np.zeros(len(g))]
         exe = diff_prop(ye, ge, np.r_[g.item_id, g.item_id])
+        # record-level comparison of each pressured record with its own control
+        p_fl = (both.canon_answer != both.B).values
+        c_fl = (both.ctl_canon != both.B).values
         rows.append({"model": m, "n_pairs": len(both),
+                     "pair_pressured_only": float(np.mean(p_fl & ~c_fl)),
+                     "pair_control_only": float(np.mean(~p_fl & c_fl)),
+                     "pair_both": float(np.mean(p_fl & c_fl)),
                      "raw_flip": fp.mean(), "matched_null": fc.mean(),
                      "excess_flip": ex["diff"], "excess_lo": ex["lo"], "excess_hi": ex["hi"],
                      "null_share": fc.mean() / fp.mean() if fp.mean() > 0 else np.nan,
@@ -598,6 +604,12 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
                                   ).groupby("item_id")[["fp", "fc"]].agg(["sum", "count"])
     t = pd.DataFrame(rows)
     t["rank_raw"] = t.raw_flip.rank(ascending=False, method="min").astype(int)
+    num("pairPOnlyMin", pct(t.pair_pressured_only.min(), 0), "{}")
+    num("pairPOnlyMax", pct(t.pair_pressured_only.max(), 0), "{}")
+    num("pairCOnlyMin", pct(t.pair_control_only.min(), 1), "{}")
+    num("pairCOnlyMax", pct(t.pair_control_only.max(), 1), "{}")
+    num("pairBothMin", pct(t.pair_both.min(), 0), "{}")
+    num("pairBothMax", pct(t.pair_both.max(), 0), "{}")
     t["rank_excess"] = t.excess_flip.rank(ascending=False, method="min").astype(int)
     from scipy.stats import kendalltau
     tau = kendalltau(t.raw_flip, t.excess_flip).statistic
@@ -641,8 +653,8 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
                     f"{r.rank_excess} ({r.rank_excess_lo:.0f}--{r.rank_excess_hi:.0f})",
                     f"{r.form_null_shared:.3f}", f"{r.stochastic_null:.3f}"])
     latex_table(pd.DataFrame(out), "lrrrrrrr",
-                "Model & Raw flip & Matched null & Excess [95\\% CI] & Rank raw & "
-                "Rank excess & Form null & $T{=}0.7$ null", "tab_null")
+                "Model & Raw flip & Matched null & Difference [95\\% CI] & Rank raw & "
+                "Rank diff. & Form null & $T{=}0.7$ null", "tab_null")
     return t, taus
 
 
@@ -760,15 +772,18 @@ def sec_robust(rob, main):
     num("leakMistral", pct(a1.loc["mistralai/Mistral-7B-Instruct-v0.3", "template_leak"], 0), "{}")
     num("emptyGtwo", pct(a1.loc["google/gemma-2-9b-it", "empty"], 0), "{}")
     num("nSelfTurnsUnique", f"{int(a2.turns.iloc[0]):,}", "{}")
-    num("maxBadSelfTurns", pct(float((a2.empty + a2.template_leak).max()), 1), "{}")
+    num("maxBadSelfTurns", pct(float((a2["empty"] + a2["template_leak"]).max()), 1), "{}")
+    num("emptySelfGtwo", pct(a2.loc["google/gemma-2-9b-it", "empty"], 0), "{}")
+    num("emptySelfMis", pct(a2.loc["mistralai/Mistral-7B-Instruct-v0.3", "empty"], 0), "{}")
     num("withOptSelfMin", pct(float(a2.with_option.min()), 0), "{}")
     num("withOptSelfMax", pct(float(a2.with_option.max()), 0), "{}")
     rows = []
     for m in MORDER:
         x1, x2 = a1.loc[m], a2.loc[m]
         rows.append([SHORT[m], f"{int(x2.turns):,}",
-                     f"{x1.with_option:.3f}", f"{x1.empty:.3f}", f"{x1.template_leak:.3f}",
-                     f"{x2.with_option:.3f}", f"{x2.empty:.3f}", f"{x2.template_leak:.3f}"])
+                     # x["empty"], not x.empty: Series.empty is a pandas attribute
+                     f"{x1['with_option']:.3f}", f"{x1['empty']:.3f}", f"{x1['template_leak']:.3f}",
+                     f"{x2['with_option']:.3f}", f"{x2['empty']:.3f}", f"{x2['template_leak']:.3f}"])
     latex_table(pd.DataFrame(rows), "lrrrrrrr",
                 "Model & Unique turns & \\multicolumn{3}{c}{First build} & "
                 "\\multicolumn{3}{c}{Validated build (v4b)} \\\\ & & option & empty & "
@@ -780,6 +795,16 @@ def sec_robust(rob, main):
     j = v0.merge(mm, on="base_record_id")
     agree = ((j.answer == j.main_answer) | (j.answer.isna() & j.main_answer.isna())).mean()
     num("detAgree", pct(agree, 2), "{}"); num("detN", f"{len(j):,}", "{}")
+    jt = v0.merge(main[["record_id", "text"]].rename(columns={"record_id": "base_record_id",
+                                                              "text": "main_text"}),
+                  on="base_record_id").merge(r[r.variant == "v0_baseline"][["base_record_id", "text"]],
+                                             on="base_record_id")
+    num("detSameText", pct((jt.text.fillna("") == jt.main_text.fillna("")).mean(), 1), "{}")
+    dis = j[~((j.answer == j.main_answer) | (j.answer.isna() & j.main_answer.isna()))]
+    num("detDisagree", str(len(dis)), "{}")
+    num("detDisagreeNA", str(int((dis.answer.isna() | dis.main_answer.isna()).sum())), "{}")
+    num("detDisagreeModels", str(int(dis.base_record_id.map(
+        dict(zip(r.base_record_id, r.model))).nunique())), "{}")
     # table: refusing models x variants (rate 0/3+3/3 pooled, history contrast)
     refusing = [m for m in MORDER
                 if t[(t.model == m) & (t.variant == "v0_baseline")].rate.iloc[0] >= 0.05]
