@@ -198,14 +198,46 @@ def fmt_pp(r, stars=True):
 def write_tex(name, body):
     # the condition is called "neutral" in the paper ("filler" is the code name)
     body = body.replace("\\texttt{filler}", "\\texttt{neutral}")
+    # typographic minus for negative numbers in tables (not in ranges like 4--5)
+    body = re.sub(r"(?<![-\w$])-(?=\d)", "$-$", body)
     (GEN / f"{name}.tex").write_text(body)
 
 
-def latex_table(df, colspec, header, name):
+def hd(*lines):
+    """Header cell stacked on several lines."""
+    return "\\begin{tabular}[b]{@{}c@{}}" + "\\\\".join("{" + x + "}" for x in lines) + "\\end{tabular}"
+
+
+VSHORT = {"v0_baseline": "Orig.", "v1_ack_alt": hd("Ack", "changed"),
+          "v2_no_ack": hd("No asst.", "turns"), "v3_force": hd("Letter", "mandate"),
+          "v5_format": hd("Format-", "compat."), "v6_noconf": hd("No", "conf."),
+          "v7_context": hd("Context-", "only"), "v4b_selfgen": hd("Self-", "generated")}
+
+
+_SPLIT = re.compile(r"^(.*?) (\[[^\]]*\]|\([^)]*\))(\$\^\{\*\}\$)?$")
+
+
+def latex_table(df, colspec, header, name, two_row=False):
+    """Write a booktabs table. two_row=True puts the interval (or count) of
+    each cell on a second line under the estimate, so that tables stay
+    legible at normal font size instead of being scaled down."""
     lines = [f"\\begin{{tabular}}{{{colspec}}}", "\\toprule", header + " \\\\",
              "\\midrule"]
-    for _, r in df.iterrows():
-        lines.append(" & ".join(str(v) for v in r.values) + " \\\\")
+    for i, (_, r) in enumerate(df.iterrows()):
+        vals = [str(v) for v in r.values]
+        if not two_row:
+            lines.append(" & ".join(vals) + " \\\\")
+            continue
+        top, bot = [], []
+        for v in vals:
+            m_ = _SPLIT.match(v)
+            if m_ and m_.group(1):
+                top.append(m_.group(1) + (m_.group(3) or "")); bot.append(m_.group(2))
+            else:
+                top.append(v); bot.append("")
+        lines.append(" & ".join(top) + " \\\\")
+        if any(bot):
+            lines.append(" & ".join(bot) + (" \\\\[2pt]" if i < len(df) - 1 else " \\\\"))
     lines += ["\\bottomrule", "\\end{tabular}"]
     write_tex(name, "\n".join(lines) + "\n")
 
@@ -255,13 +287,37 @@ def sec_nonanswer(main, probes):
     num("nNonAnswerMain", f"{int(tab['total'].sum()):,}", "{}")
     num("nNonAnswerAck", f"{int(tab.get('ack_only', 0).sum()):,}", "{}")
     num("pctNonAnswerAck", pct(tab.get("ack_only", 0).sum() / tab["total"].sum()), "{}")
+    pa = na[na.arm == "p1"]
+    num("nNonAnswerPress", f"{len(pa):,}", "{}")
+    num("nNonAnswerAckPress", f"{int((pa.taxon == 'ack_only').sum()):,}", "{}")
+    num("pctNonAnswerAckPress", pct((pa.taxon == "ack_only").mean()), "{}")
+    num("nNonAnswerShared", f"{int((na.arm == 'shared').sum()):,}", "{}")
+    num("nNonAnswerAckShared", str(int(((na.arm == "shared") & (na.taxon == "ack_only")).sum())), "{}")
+    rest = na[na.taxon != "ack_only"]
+    num("nNonAnswerRest", str(len(rest)), "{}")
+    mis = "mistralai/Mistral-7B-Instruct-v0.3"
+    num("nRestTrunc", str(int((rest.taxon == "truncated").sum())), "{}")
+    num("nRestTruncMis", str(int(((rest.taxon == "truncated") & (rest.model == mis)).sum())), "{}")
+    num("nRestAckPlus", str(int((rest.taxon == "ack_plus_text").sum())), "{}")
+    num("nRestAckPlusGtwo", str(int(((rest.taxon == "ack_plus_text")
+                                      & (rest.model == "google/gemma-2-9b-it")).sum())), "{}")
+    num("nRestMis", str(int((rest.model == mis).sum())), "{}")
     cols = [c for c in ["ack_only", "ack_plus_text", "explicit_abstention",
                         "option_text", "letter_unparsed", "truncated", "empty",
                         "other"] if c in tab]
-    t = tab[cols + ["total"]].reset_index()
+    t = tab[cols + ["total"]].copy()
+    t = t.apply(lambda col: col.map(lambda v: f"{int(v):,}"))
+    byarm = pd.crosstab(na.model, na.arm).reindex(MORDER).fillna(0).astype(int)
+    t["pressure arm"] = byarm.get("p1", 0).map(lambda v: f"{int(v):,}")
+    t["shared arm"] = byarm.get("shared", 0).map(lambda v: f"{int(v):,}")
+    t = t.reset_index()
     t["model"] = t.model.map(SHORT)
-    hdr = ("Model & " + " & ".join(c.replace("_", " ") for c in cols) + " & total")
-    latex_table(t, "l" + "r" * (len(cols) + 1), hdr, "tab_nonanswer_taxonomy")
+    lab = {"ack_only": "Ack.\\ only", "ack_plus_text": "Ack.\\ + text",
+           "explicit_abstention": "Abstention", "option_text": "Option text",
+           "letter_unparsed": "Letter unparsed", "truncated": "Truncated", "empty": "Empty",
+           "other": "Other"}
+    hdr = ("Model & " + " & ".join(lab[c] for c in cols) + " & Total & Pressure & Shared")
+    latex_table(t, "l" + "r" * (len(cols) + 3), hdr, "tab_nonanswer_taxonomy")
     na[["record_id", "model", "cell_id", "text", "finish", "taxon"]].to_csv(
         RES / "nonanswer_records.csv", index=False)
     return na
@@ -292,18 +348,21 @@ def sec_models(main, B, rob, thr, revisions):
     for r in t.itertuples():
         tag = mname(r.hf_id)
         num(f"na{tag}", r.non_answer)
+        num(f"naPct{tag}", pct(r.non_answer, 0), "{}")
         num(f"acc{tag}", r.baseline_acc)
     out = t[["model", "release", "precision", "n_pressure", "baseline_acc",
              "non_answer", "truncated"]].copy()
     out["n_pressure"] = out.n_pressure.map(lambda v: f"{v:,}")
     for c in ("baseline_acc", "non_answer", "truncated"):
-        out[c] = out[c].map(lambda v: f"{v:.3f}")
+        out[c] = out[c].map(lambda v: "$<$0.001" if 0 < v < 0.0005 else f"{v:.3f}")
+    out["non_answer"] = [f"{v} ({k:,})" for v, k in zip(out.non_answer, t.non_answer_n)]
     latex_table(out, "llrrrrr",
                 "Model & Release & Weights & $n$ (pressure) & Acc.\\ (no pressure)"
                 " & Non-answer & Truncated", "tab_models")
     tt = t[["model", "hf_id", "revision", "precision"]].copy()
     tt["hf_id"] = tt.hf_id.map(lambda v: "\\texttt{" + v.replace("_", "\\_") + "}")
     tt["revision"] = tt.revision.map(lambda v: "\\texttt{" + v + "}")
+    tt["precision"] = tt.precision.str.replace("AWQ 4-bit", "AWQ (4-bit)")
     latex_table(tt, "llll", "Model & Checkpoint & Revision & Weights",
                 "tab_checkpoints")
     return t
@@ -343,16 +402,16 @@ def sec_outcomes(p1):
             for s in ("bare", "credential"):
                 r = g[(g.model == m) & (g.history == h) & (g.signal == s)].iloc[0]
                 rows.append([SHORT[m] if (h == "none" and s == "bare") else "",
-                             f"\\texttt{{{h}}}", s[:4] + ".",
+                             f"\\texttt{{{h}}}", "bare" if s == "bare" else "cred.",
                              f"{int(r.n):,}", f"{int(r.correct):,}",
                              f"{int(r.endorse):,}", f"{int(r.other_wrong):,}",
                              f"{int(r.non_answer):,}",
                              f"{r.p_endorse_given_parsed:.3f}"])
     t = pd.DataFrame(rows)
-    latex_table(t, "lllrrrrrr",
-                "Model & History & Signal & $n$ & Correct & Endorse & Other wrong"
-                " & Non-answer & $P(\\text{endorse}\\mid\\text{parsed})$",
-                "tab_outcome_counts")
+    hdr = ("Model & History & Signal & $n$ & Correct & Endorse & Other wrong"
+           " & Non-answer & $P(\\text{endorse}\\mid\\text{parsed})$")
+    latex_table(t.iloc[:32], "lllrrrrrr", hdr, "tab_outcome_counts_a")
+    latex_table(t.iloc[32:], "lllrrrrrr", hdr, "tab_outcome_counts_b")
     return g
 
 
@@ -409,7 +468,7 @@ def sec_contrasts(p1):
             rows.append(row)
         latex_table(pd.DataFrame(rows), "lrrrr",
                     "Model & History $\\mid$ bare & History $\\mid$ credential & "
-                    "Credential $\\mid$ 3/3 & Credential $\\mid$ 0/3", tname)
+                    "Credential $\\mid$ 3/3 & Credential $\\mid$ 0/3", tname, two_row=True)
     # macros for numbers quoted in the text
     for r in c.itertuples():
         if r.contrast in PRIMARY and r.outcome in ("non_answer", "endorse_cond", "endorse"):
@@ -485,7 +544,7 @@ def sec_correct_suggestions(p1, B):
                      f"{r['recover_3/3']:.3f}", f"{r['recover_0/3']:.3f}"])
     latex_table(pd.DataFrame(rows), "lrrrrrrr",
                 "Model & \\multicolumn{2}{c}{Endorse $\\mid u=g$} & "
-                "\\multicolumn{2}{c}{Endorse $\\mid u\\neq g$} & $\\Delta$ selectivity & "
+                "\\multicolumn{2}{c}{Endorse $\\mid u\\neq g$} & $\\Delta$ gap & "
                 "\\multicolumn{2}{c}{Recovery} \\\\ & 3/3 & 0/3 & 3/3 & 0/3 & (0/3$-$3/3) & 3/3 & 0/3",
                 "tab_correct_suggestions_raw")
     return t
@@ -564,8 +623,11 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
     per_item = {}
     for m in MORDER:
         g = canon_cell[canon_cell.model == m]
-        fp, gp = flip(g)
-        fc, gc = flip(g, "ctl_canon")
+        # raw and matched rates are computed on the SAME eligible pairs: B
+        # defined and both the pressured and the control answer parsed
+        both = g[g.B.notna() & g.canon_answer.notna() & g.ctl_canon.notna()]
+        fp = (both.canon_answer != both.B).astype(float)
+        fc = (both.ctl_canon != both.B).astype(float)
         form = sh[(sh.model == m) & (sh.pressure == "none") & (sh.decode == "greedy")
                   & (sh.rep == 1)]
         ff, _ = flip(form)
@@ -575,8 +637,7 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
         fd, _ = flip(dbt)
         ref = sh[(sh.model == m) & (sh.pressure == "reformulation") & (sh.decode == "greedy")]
         fr, _ = flip(ref)
-        # paired excess: same records, pressured vs matched control
-        both = g[g.B.notna() & g.canon_answer.notna() & g.ctl_canon.notna()]
+        # paired difference on the same pairs
         y = np.r_[(both.canon_answer != both.B).astype(float),
                   (both.ctl_canon != both.B).astype(float)]
         grp = np.r_[np.ones(len(both)), np.zeros(len(both))]
@@ -587,7 +648,15 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
         # record-level comparison of each pressured record with its own control
         p_fl = (both.canon_answer != both.B).values
         c_fl = (both.ctl_canon != both.B).values
-        rows.append({"model": m, "n_pairs": len(both),
+        bg = both[both.B == both.canon_true]      # baseline correct: harmful endorsement
+        rows.append({"model": m, "n_records": len(g), "n_pairs": len(both),
+                     "n_probes": int(both.item_id.nunique()),
+                     "excl_no_baseline": int(g.B.isna().sum()),
+                     "excl_non_answer": int((g.B.notna() & (g.canon_answer.isna()
+                                                            | g.ctl_canon.isna())).sum()),
+                     "n_baseline_correct": len(bg),
+                     "harm_pressured": float(bg.endorse.mean()),
+                     "harm_control": float(bg.ctl_endorse.mean()),
                      "pair_pressured_only": float(np.mean(p_fl & ~c_fl)),
                      "pair_control_only": float(np.mean(~p_fl & c_fl)),
                      "pair_both": float(np.mean(p_fl & c_fl)),
@@ -642,19 +711,32 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
     num("nullShareMin", pct(t.null_share.min(), 0), "{}")
     num("nullShareMax", pct(t.null_share.max(), 0), "{}")
     num("nullMin", t.matched_null.min()); num("nullMax", t.matched_null.max())
+    num("rawMin", t.raw_flip.min()); num("rawMax", t.raw_flip.max())
+    num("nullPairsMin", f"{int(t.n_pairs.min()):,}", "{}"); num("nullPairsMax", f"{int(t.n_pairs.max()):,}", "{}")
+    num("nullProbesMin", str(int(t.n_probes.min())), "{}"); num("nullProbesMax", str(int(t.n_probes.max())), "{}")
+    num("nullExclNA", str(int(t.excl_non_answer.sum())), "{}")
+    num("harmPMin", pct(t.harm_pressured.min(), 0), "{}"); num("harmPMax", pct(t.harm_pressured.max(), 0), "{}")
+    num("harmCMin", pct(t.harm_control.min(), 1), "{}"); num("harmCMax", pct(t.harm_control.max(), 1), "{}")
+    rr_ = t.set_index("model")
+    for m in MORDER:
+        num(f"rankDiffLo{mname(m)}", f"{rr_.loc[m, 'rank_excess_lo']:.0f}", "{}")
+        num(f"rankDiffHi{mname(m)}", f"{rr_.loc[m, 'rank_excess_hi']:.0f}", "{}")
     num("stoNullMin", t.stochastic_null.min()); num("stoNullMax", t.stochastic_null.max())
     num("formNullMin", t.form_null_shared.min()); num("formNullMax", t.form_null_shared.max())
     num("nBoot", f"{n_boot:,}", "{}")
     out = []
     for r in t.itertuples():
-        out.append([SHORT[r.model], f"{r.raw_flip:.3f}", f"{r.matched_null:.3f}",
+        out.append([SHORT[r.model], f"{r.n_pairs} ({r.n_probes})", f"{r.raw_flip:.3f}",
+                    f"{r.matched_null:.3f}",
                     f"{r.excess_flip:+.3f} [{r.excess_lo:+.3f}, {r.excess_hi:+.3f}]",
                     f"{r.rank_raw} ({r.rank_raw_lo:.0f}--{r.rank_raw_hi:.0f})",
                     f"{r.rank_excess} ({r.rank_excess_lo:.0f}--{r.rank_excess_hi:.0f})",
                     f"{r.form_null_shared:.3f}", f"{r.stochastic_null:.3f}"])
-    latex_table(pd.DataFrame(out), "lrrrrrrr",
-                "Model & Raw flip & Matched null & Difference [95\\% CI] & Rank raw & "
-                "Rank diff. & Form null & $T{=}0.7$ null", "tab_null")
+    latex_table(pd.DataFrame(out), "lrrrrrrrr",
+                "Model & " + " & ".join([hd("Pairs", "(probes)"), "Pressured", hd("Matched", "control"),
+                                          hd("Difference", "[95\\% CI]"), hd("Rank", "raw"),
+                                          hd("Rank", "diff."), hd("Form", "null"),
+                                          hd("$T{=}0.7$", "null")]), "tab_null", two_row=True)
     return t, taus
 
 
@@ -662,7 +744,7 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
 VARIANTS = [("v0_baseline", "original"), ("v1_ack_alt", "ack changed"),
             ("v2_no_ack", "no assistant turns"), ("v3_force", "letter mandated"),
             ("v5_format", "format-compatible"), ("v6_noconf", "no confidence"),
-            ("v4b_selfgen", "self-generated history")]
+            ("v7_context", "context-only prompt"), ("v4b_selfgen", "self-generated history")]
 SELF = "v4b_selfgen"          # validated self-generated history (script 14)
 SELF_OLD = "v4_selfgen"       # first build (script 13), audited in the appendix
 
@@ -670,7 +752,7 @@ SELF_OLD = "v4_selfgen"       # first build (script 13), audited in the appendix
 def copies_context(row):
     """Does a non-answer reproduce an assistant turn present in its context?"""
     n = norm(row.text)
-    if row.variant in ("v0_baseline", "v3_force", "v5_format", "v6_noconf"):
+    if row.variant in ("v0_baseline", "v3_force", "v5_format", "v6_noconf", "v7_context"):
         return n == "noted"
     if row.variant == "v1_ack_alt":
         return n == norm(ACK_ALT["en"][int(row.paraphrase) % 3])
@@ -711,16 +793,17 @@ def sec_robust(rob, main):
                     g.endorse.astype(float), (g.history == "0/3").astype(float), g.item_id)})
     te = holm(pd.DataFrame(er))
     te.to_csv(RES / "robustness_endorse_contrasts.csv", index=False)
-    out = []
-    for m in MORDER:
-        row = [SHORT[m]]
-        for v, _ in VARIANTS:
-            x = te[(te.model == m) & (te.variant == v)]
-            row.append(fmt_pp(x.iloc[0]) if len(x) else "--")
-        out.append(row)
-    latex_table(pd.DataFrame(out), "l" + "r" * len(VARIANTS),
-                "Model & " + " & ".join(lbl for _, lbl in VARIANTS),
-                "tab_variant_endorse")
+    for part, vs_ in (("a", VARIANTS[:4]), ("b", VARIANTS[4:])):
+        out = []
+        for m in MORDER:
+            row = [SHORT[m]]
+            for v, _ in vs_:
+                x = te[(te.model == m) & (te.variant == v)]
+                row.append(fmt_pp(x.iloc[0]) if len(x) else "--")
+            out.append(row)
+        latex_table(pd.DataFrame(out), "l" + "r" * len(vs_),
+                    "Model & " + " & ".join(VSHORT[v] for v, _ in vs_),
+                    f"tab_variant_endorse_{part}", two_row=True)
     for x in te[te.variant == SELF].itertuples():
         num(f"selfEnd{mname(x.model)}", f"{100 * x.diff:+.1f}", "{}")
         num(f"selfEnd{mname(x.model)}ci", (f"[{100 * x.lo:+.1f}, {100 * x.hi:+.1f}]"
@@ -743,7 +826,7 @@ def sec_robust(rob, main):
         out.append(row)
     latex_table(pd.DataFrame(out), "lrrrr",
                 "Model & Non-answer & Endorse (all) & Endorse $\\mid$ answered & "
-                "Endorse, self-gen.", "tab_history_scoring")
+                "Endorse, self-gen.", "tab_history_scoring", two_row=True)
     sig4 = te[(te.variant == SELF) & (te.p_holm < 0.05) & (te["diff"] < 0)]
     num("nSelfEndNeg", str(len(sig4)), "{}")
     sig4p = te[(te.variant == SELF) & (te.p_holm < 0.05) & (te["diff"] > 0)]
@@ -819,7 +902,7 @@ def sec_robust(rob, main):
             row.append(f"{x.rate:.3f} ({x.k})")
         out.append(row)
     latex_table(pd.DataFrame(out), "l" + "r" * len(VARIANTS),
-                "Model & " + " & ".join(lbl for _, lbl in VARIANTS), "tab_variants")
+                "Model & " + " & ".join(VSHORT[v] for v, _ in VARIANTS), "tab_variants", two_row=True)
     out = []
     for m in MORDER:
         row = [SHORT[m]]
@@ -849,12 +932,12 @@ def sec_robust(rob, main):
         x0 = t[(t.model == m) & (t.variant == "v0_baseline")].iloc[0]
         for v, key in (("v1_ack_alt", "Ack"), ("v3_force", "Force"),
                        (SELF, "Self"), ("v2_no_ack", "NoAck"), ("v5_format", "Format"),
-                       ("v6_noconf", "NoConf")):
+                       ("v6_noconf", "NoConf"), ("v7_context", "Context")):
             x = t[(t.model == m) & (t.variant == v)]
             if len(x) and x0.rate > 0:
                 num(f"drop{key}{mname(m)}", pct(1 - x.iloc[0].rate / x0.rate, 0), "{}")
     for key, v in (("Ack", "v1_ack_alt"), ("Force", "v3_force"), ("Self", SELF),
-                   ("Format", "v5_format"), ("NoConf", "v6_noconf")):
+                   ("Format", "v5_format"), ("NoConf", "v6_noconf"), ("Context", "v7_context")):
         vals = []
         for m in refusing:
             x0 = t[(t.model == m) & (t.variant == "v0_baseline")].iloc[0].rate
@@ -868,7 +951,7 @@ def sec_robust(rob, main):
             num(f"remain{key}Max", pct(1 - min(vals), 0), "{}")
     cps = t[(t.variant == "v1_ack_alt") & t.model.isin(refusing)].copy_share
     num("copyAltMin", pct(cps.min(), 0), "{}"); num("copyAltMax", pct(cps.max(), 0), "{}")
-    for v, key in (("v5_format", "Format"), ("v6_noconf", "NoConf")):
+    for v, key in (("v5_format", "Format"), ("v6_noconf", "NoConf"), ("v7_context", "Context")):
         cp_ = t[(t.variant == v) & t.model.isin(refusing)].copy_share.dropna()
         if len(cp_):
             num(f"copy{key}Min", pct(cp_.min(), 0), "{}"); num(f"copy{key}Max", pct(cp_.max(), 0), "{}")
@@ -888,7 +971,9 @@ def sec_robust(rob, main):
     num("nRefusing", str(len(refusing)), "{}")
     # models without non-answers in the original scaffold that acquire them
     others = [m for m in MORDER if m not in refusing]
-    for v, key in (("v5_format", "Format"), ("v6_noconf", "NoConf")):
+    for v, key in (("v5_format", "Format"), ("v6_noconf", "NoConf"), ("v7_context", "Context")):
+        if not (t.variant == v).any():
+            continue
         new_na = [m for m in others
                   if t[(t.model == m) & (t.variant == v)].rate.iloc[0] >= 0.05]
         num(f"nNew{key}", str(len(new_na)), "{}")
@@ -912,6 +997,7 @@ def sec_trunc(main, tr):
     trm = tr[tr.source == "main"]
     num("nTruncRerun", str(len(tr)), "{}")
     num("nTruncRerunMain", str(len(trm)), "{}")
+    num("nTruncRerunRob", str(len(tr) - len(trm)), "{}")
     num("nTruncRecovered", str(int(tr.answer_256.notna().sum())), "{}")
     num("nTruncRecoveredMain", str(int(trm.answer_256.notna().sum())), "{}")
     # sensitivity: replace the 64-token answer by the 256-token answer
@@ -973,7 +1059,7 @@ def sec_items(probes, cal, cmap, main):
     comp = []
     for name, df in (("probes (pressure arm)", probes[probes.in_p1]),
                      ("probes (shared arm)", probes[probes.item_id.isin(sh_items)]),
-                     ("calibration", cal)):
+                     ("history items", cal)):
         comp.append({"set": name, "n": len(df),
                      "mmlu_pro": int((df.source == "mmlu_pro").sum()),
                      "truthfulqa": int((df.source == "truthfulqa").sum()),
@@ -986,6 +1072,10 @@ def sec_items(probes, cal, cmap, main):
     num("nProbeP", str(pp.n), "{}"); num("nProbeMMLU", str(pp.mmlu_pro), "{}")
     num("nProbeTQA", str(pp.truthfulqa), "{}")
     num("nProbeShared", str(t.iloc[1].n), "{}"); num("nCal", str(t.iloc[2].n), "{}")
+    shown = {c for p_ in sorted(p1_items) for c in cmap[p_]}
+    num("nCalShown", str(len(shown)), "{}")
+    first = sorted(p1_items)[:100]
+    num("nRobustMMLU", str(int(probes[probes.item_id.isin(first)].source.eq("mmlu_pro").sum())), "{}")
     probes.groupby(["source", "category"]).size().rename("n").reset_index().to_csv(
         RES / "items_categories.csv", index=False)
     return t
@@ -1009,26 +1099,29 @@ def sec_transitions(p1, B):
     t = pd.DataFrame(rows)
     t = pd.concat([holm(g) for _, g in t.groupby(["metric", "signal"])]).sort_index()
     t.to_csv(RES / "baseline_eligible_transitions.csv", index=False)
-    out = []
-    for m in MORDER:
-        row = [SHORT[m]]
-        for name in ("recovery", "c2u"):
-            x = t[(t.model == m) & (t.signal == "bare") & (t.metric == name)].iloc[0]
-            row += [f"{x.p0:.3f} ({x.n0})", f"{x.p1:.3f} ({x.n1})", fmt_pp(x)]
-            num(f"tr{'Rec' if name == 'recovery' else 'Cu'}{mname(m)}", f"{100 * x['diff']:+.1f}", "{}")
-            num(f"tr{'Rec' if name == 'recovery' else 'Cu'}{mname(m)}ci",
-                f"[{100 * x.lo:+.1f}, {100 * x.hi:+.1f}]" if np.isfinite(x.lo) else "(n.e.)", "{}")
-        out.append(row)
-    latex_table(pd.DataFrame(out), "lrrrrrr",
-                "Model & \\multicolumn{3}{c}{Recovery $P(A{=}g\\mid B{\\neq}g,\\,u{=}g)$} & "
-                "\\multicolumn{3}{c}{Correct-to-suggested $P(A{=}u\\mid B{=}g,\\,u{\\neq}g)$} \\\\ "
-                "& 3/3 ($n$) & 0/3 ($n$) & $\\Delta$ [95\\% CI] & 3/3 ($n$) & 0/3 ($n$) & "
-                "$\\Delta$ [95\\% CI]", "tab_correct_suggestions")
+    for sig, tname in (("bare", "tab_correct_suggestions"), ("credential", "tab_correct_suggestions_cred")):
+        out = []
+        for m in MORDER:
+            row = [SHORT[m]]
+            for name in ("recovery", "c2u"):
+                x = t[(t.model == m) & (t.signal == sig) & (t.metric == name)].iloc[0]
+                row += [f"{x.p0:.3f} ({x.n0})", f"{x.p1:.3f} ({x.n1})", fmt_pp(x)]
+                if sig == "bare":
+                    num(f"tr{'Rec' if name == 'recovery' else 'Cu'}{mname(m)}", f"{100 * x['diff']:+.1f}", "{}")
+                    num(f"tr{'Rec' if name == 'recovery' else 'Cu'}{mname(m)}ci",
+                        f"[{100 * x.lo:+.1f}, {100 * x.hi:+.1f}]" if np.isfinite(x.lo) else "(n.e.)", "{}")
+            out.append(row)
+        latex_table(pd.DataFrame(out), "lrrrrrr",
+                    "Model & \\multicolumn{3}{c}{Recovery $P(A{=}g\\mid B{\\neq}g,\\,u{=}g)$} & "
+                    "\\multicolumn{3}{c}{Correct-to-suggested $P(A{=}u\\mid B{=}g,\\,u{\\neq}g)$} \\\\ "
+                    "& 3/3 ($n$) & 0/3 ($n$) & $\\Delta$ [95\\% CI] & 3/3 ($n$) & 0/3 ($n$) & "
+                    "$\\Delta$ [95\\% CI]", tname, two_row=True)
     tb = t[t.signal == "bare"]
     for name, key in (("recovery", "Rec"), ("c2u", "Cu")):
         x = tb[tb.metric == name]
         num(f"n{key}Up", str(int(((x.p_holm < 0.05) & (x["diff"] > 0)).sum())), "{}")
         num(f"n{key}Down", str(int(((x.p_holm < 0.05) & (x["diff"] < 0)).sum())), "{}")
+        num(f"n{key}NumDown", str(int((x["diff"] < 0).sum())), "{}")
     return t
 
 
@@ -1145,7 +1238,7 @@ def sec_lengths(main):
 
 
 # ============================================================ manifest
-def sec_manifest(main, rob, ctl, tr, genlog):
+def sec_manifest(main, rob, ctl, tr, genlog, wc=None):
     rows = []
     for m in MORDER:
         g = main[main.model == m]
@@ -1157,6 +1250,8 @@ def sec_manifest(main, rob, ctl, tr, genlog):
                      "main_total": len(g), "main_first_wave": int(wave1),
                      "robust_v0_v3": int(rb.variant.isin([v for v, _ in VARIANTS[:4]]).sum()),
                      "robust_v5_v6": int(rb.variant.isin(["v5_format", "v6_noconf"]).sum()),
+                     "robust_v7": int((rb.variant == "v7_context").sum()),
+                     "wording_v8": int((wc.model == m).sum()) if wc is not None else 0,
                      "robust_v4_probe": int(rb.variant.isin([SELF, SELF_OLD]).sum()),
                      "v4_history_turns": (genlog.get("e2_history_turns", {}).get(m, 0)
                                           + genlog.get("v4b_history_turns", {}).get(m, 0)),
@@ -1174,21 +1269,468 @@ def sec_manifest(main, rob, ctl, tr, genlog):
     num("nVFourHist", f"{v4h:,}", "{}")
     ntr = len(tr) if tr is not None else 0
     total = int(tot.main_total + tot.robust_v0_v3 + tot.robust_v5_v6 + tot.robust_v4_probe
-                + v4h + tot.control_e1 + ntr)
+                + v4h + tot.control_e1 + ntr + tot.robust_v7 + tot.wording_v8)
+    num("nRobustVSeven", f"{int(tot.robust_v7):,}", "{}")
+    num("nWordingVEight", f"{int(tot.wording_v8):,}", "{}")
+    num("nRoundFour", f"{int(tot.robust_v7 + tot.wording_v8):,}", "{}")
     num("nGenerationsTotal", f"{total:,}", "{}")
     num("nTruncRerunAll", f"{ntr:,}", "{}")
-    out = t.copy()
-    out["model"] = out.model.map(SHORT)
-    out = out[["model", "pressure", "shared", "robust_v0_v3", "robust_v5_v6",
-               "robust_v4_probe", "v4_history_turns", "control_e1"]]
-    tot_row = ["Total"] + [f"{int(np.nansum(out[c])):,}" for c in out.columns[1:]]
-    for c in out.columns[1:]:
-        out[c] = out[c].map(lambda v: f"{int(v):,}" if np.isfinite(v) else "--")
-    out.loc[len(out)] = tot_row
-    latex_table(out, "lrrrrrrr",
-                "Model & Pressure & Shared & v0--v3 & v5--v6 & Self-gen.\\ probes & "
-                "Self-gen.\\ turns & Matched control", "tab_manifest")
+    arms = [("pressure", "Pressure arm"), ("shared", "Shared reference arm"),
+            ("robust_v0_v3", "Robustness: original re-run, ack., no asst., letter"),
+            ("robust_v5_v6", "Robustness: format-compatible, no confidence"),
+            ("robust_v7", "Robustness: context-only prompt"),
+            ("robust_v4_probe", "Self-generated history: probes (both builds)"),
+            ("v4_history_turns", "Self-generated history: turns (both builds)"),
+            ("control_e1", "Matched no-assertion control"),
+            ("wording_v8", "Credential wording control")]
+    out = []
+    for c, lbl in arms:
+        per = t[c].astype(float)
+        if per.sum() == 0:
+            continue
+        each = f"{int(per.iloc[0]):,}" if per.nunique() == 1 else "varies"
+        out.append([lbl, each, f"{int(per.sum()):,}"])
+    out.append(["Truncated non-answers re-run with 256 tokens", "--", f"{ntr:,}"])
+    out.append(["Total", "--", f"{total:,}"])
+    latex_table(pd.DataFrame(out), ">{\\raggedright\\arraybackslash}p{4.0cm}rr",
+                "Collection arm & Per model & All models", "tab_manifest")
     return t
+
+
+# ============================================================ fourth-round analyses
+def sec_history_main_table(p1, rob):
+    """Main-text Table 2: history contrast (0/3 - 3/3) on an incorrect
+    suggestion. Original scaffold, bare assertion, three scorings plus the
+    worst-case (Manski) bounds on endorsement; and endorsement in the two
+    variants without experimenter-written assistant turns (both signals, the
+    estimate and Holm family of Table variant-endorse)."""
+    cc = pd.read_csv(RES / "contrasts_pp.csv")
+    te = pd.read_csv(RES / "robustness_endorse_contrasts.csv")
+    inc = p1[(p1.position == "incorrect") & (p1.signal == "bare")
+             & p1.history.isin(["0/3", "3/3"])]
+    out, bounds = [], []
+    for m in MORDER:
+        row = [SHORT[m]]
+        for o in ("non_answer", "endorse", "endorse_cond"):
+            row.append(fmt_pp(cc[(cc.model == m) & (cc.outcome == o)
+                                 & (cc.contrast == "hist_bare")].iloc[0]))
+        g = inc[inc.model == m]
+        lo_h = {h: g[g.history == h].endorse.mean() for h in ("3/3", "0/3")}
+        hi_h = {h: (g[g.history == h].endorse | ~g[g.history == h].parsed).mean()
+                for h in ("3/3", "0/3")}
+        lo, hi = lo_h["0/3"] - hi_h["3/3"], hi_h["0/3"] - lo_h["3/3"]
+        bounds.append({"model": m, "lo": lo, "hi": hi, "width": hi - lo})
+        row.append(f"[{r9(100 * lo):+.1f}, {r9(100 * hi):+.1f}]")
+        for v in ("v2_no_ack", SELF):
+            row.append(fmt_pp(te[(te.model == m) & (te.variant == v)].iloc[0]))
+        out.append(row)
+    latex_table(pd.DataFrame(out), "lrrrrrr",
+                "& \\multicolumn{4}{c}{Original scaffold, bare assertion} & "
+                "\\multicolumn{2}{c}{Without prefilled acknowledgements} \\\\ "
+                "\\cmidrule(lr){2-5}\\cmidrule(l){6-7} "
+                "Model & Non-answer & " + hd("Endorse", "(all)") + " & " + hd("Endorse", "$\\mid$ answered")
+                + " & " + hd("Worst-case", "bounds") + " & " + hd("No assistant", "turns") + " & "
+                + hd("Self-", "generated"), "tab_history_scoring", two_row=True)
+    b = pd.DataFrame(bounds)
+    b.to_csv(RES / "manski_bounds.csv", index=False)
+    for r in b.itertuples():
+        num(f"bLo{mname(r.model)}", f"{r9(100 * r.lo):+.1f}", "{}")
+        num(f"bHi{mname(r.model)}", f"{r9(100 * r.hi):+.1f}", "{}")
+    four = b[b.width > 0.2]
+    num("nWideBounds", str(len(four)), "{}")
+    num("maxNarrowWidth", f"{r9(100 * b[b.width <= 0.2].width.max()):.1f}", "{}")
+    for v, key in (("v2_no_ack", "NoAsst"), (SELF, "Self")):
+        x = te[te.variant == v]
+        num(f"n{key}Neg", str(int((x["diff"] < 0).sum())), "{}")
+        num(f"n{key}SigNeg", str(int(((x.p_holm < 0.05) & (x["diff"] < 0)).sum())), "{}")
+        sig = x[(x.p_holm < 0.05) & (x["diff"] < 0)]
+        num(f"n{key}SigMin", f"{r9(-100 * sig['diff'].max()):.1f}", "{}")
+        num(f"n{key}SigMax", f"{r9(-100 * sig['diff'].min()):.1f}", "{}")
+        for r in x.itertuples():
+            num(f"noAsstEnd{mname(r.model)}" if key != "Self" else f"selfEnd{mname(r.model)}",
+                f"{100 * r.diff:+.1f}", "{}")
+    return b
+
+
+def sec_variant_transitions(rob, B):
+    """Baseline-eligible recovery and correct-to-suggested transition in the
+    original re-run (v0) and in the two variants without prefilled
+    acknowledgements, on the same 100 probes and prompt variant 0 (both
+    signals pooled). Holm over 8 models x 3 scaffolds per metric."""
+    vs = [("v0_baseline", VSHORT["v0_baseline"]), ("v2_no_ack", VSHORT["v2_no_ack"]),
+          (SELF, VSHORT[SELF])]
+    if "v7_context" in set(rob.variant):
+        vs.append(("v7_context", VSHORT["v7_context"]))
+    d = rob[rob.variant.isin([v for v, _ in vs]) & rob.history.isin(["0/3", "3/3"])].merge(
+        B, on=["model", "item_id"], how="left")
+    d = d[d.B.notna()]
+    rows = []
+    for m in MORDER:
+        for v, _ in vs:
+            g = d[(d.model == m) & (d.variant == v)]
+            rec = g[(g.position == "correct") & (g.B != g.canon_true)]
+            c2u = g[(g.position == "incorrect") & (g.B == g.canon_true)]
+            for name, sub, y in (("recovery", rec, rec.correct), ("c2u", c2u, c2u.endorse)):
+                rows.append({"model": m, "variant": v, "metric": name, **diff_prop(
+                    y.astype(float), (sub.history == "0/3").astype(float), sub.item_id)})
+    t = pd.DataFrame(rows)
+    t = pd.concat([holm(g) for _, g in t.groupby("metric")]).sort_index()
+    t.to_csv(RES / "transitions_by_scaffold.csv", index=False)
+    out = []
+    for m in MORDER:
+        row = [SHORT[m]]
+        for name in ("c2u", "recovery"):
+            for v, _ in vs:
+                x = t[(t.model == m) & (t.variant == v) & (t.metric == name)].iloc[0]
+                row.append(fmt_pp(x).split(" [")[0] + ("$^{*}$" if x.p_holm < 0.05 else ""))
+        out.append(row)
+    k = len(vs)
+    latex_table(pd.DataFrame(out), "l" + "r" * (2 * k),
+                f"& \\multicolumn{{{k}}}{{c}}{{Correct-to-suggested}} & "
+                f"\\multicolumn{{{k}}}{{c}}{{Recovery}} \\\\ "
+                f"\\cmidrule(lr){{2-{k + 1}}}\\cmidrule(l){{{k + 2}-{2 * k + 1}}} Model & "
+                + " & ".join(lbl for _, lbl in vs) + " & " + " & ".join(lbl for _, lbl in vs),
+                "tab_transitions_scaffold")
+    for v, key in (("v2_no_ack", "NoAsst"), (SELF, "Self"), ("v0_baseline", "Orig")):
+        for name, mk in (("recovery", "Rec"), ("c2u", "Cu")):
+            x = t[(t.variant == v) & (t.metric == name)]
+            num(f"tv{mk}{key}Neg", str(int((x["diff"] < 0).sum())), "{}")
+            num(f"tv{mk}{key}Sig", str(int(((x.p_holm < 0.05) & (x["diff"] < 0)).sum())), "{}")
+    x = t[t.variant.isin(["v2_no_ack", SELF])]
+    num("tvRecNMin", str(int(x[x.metric == "recovery"][["n0", "n1"]].min().min())), "{}")
+    num("tvRecNMax", str(int(x[x.metric == "recovery"][["n0", "n1"]].max().max())), "{}")
+    return t
+
+
+def sec_control_did(p1c):
+    """History contrast on the pressured records and on their matched
+    no-assertion controls (same dialogue without the final assertion). For the
+    control, 'endorse' means choosing the option the paired pressured record
+    suggests. Difference of differences: (P-C | 0/3) - (P-C | 3/3), bare,
+    incorrect suggestions; SE clustered on probe (both members in a cluster)."""
+    d = p1c[(p1c.position == "incorrect") & (p1c.signal == "bare")
+            & p1c.history.isin(["0/3", "3/3"])]
+    rows = []
+    for m in MORDER:
+        g = d[d.model == m]
+        h = (g.history == "0/3").astype(float)
+        for o, yp, yc in (("endorse", g.endorse, g.ctl_endorse),
+                          ("non_answer", ~g.parsed, ~g.ctl_parsed),
+                          ("correct", g.correct, g.ctl_correct)):
+            pr = diff_prop(yp.astype(float), h, g.item_id)
+            ct = diff_prop(yc.astype(float), h, g.item_id)
+            y = np.r_[yp.astype(float), yc.astype(float)]
+            if y.std() == 0 or (yp.astype(float) - yc.astype(float)).std() == 0:
+                dd = dict(diff=pr["diff"] - ct["diff"], lo=np.nan, hi=np.nan, p=np.nan)
+            else:
+                dd = did(y, pd.Series(np.r_[np.ones(len(g)), np.zeros(len(g))]),
+                         pd.Series(np.r_[h, h]), np.r_[g.item_id, g.item_id])
+            rows.append({"model": m, "outcome": o, "pressured": pr["diff"],
+                         "control": ct["diff"], "control_lo": ct["lo"], "control_hi": ct["hi"],
+                         "p33": yp[g.history == "3/3"].mean(), "p03": yp[g.history == "0/3"].mean(),
+                         "c33": yc[g.history == "3/3"].mean(), "c03": yc[g.history == "0/3"].mean(),
+                         **dd})
+    t = pd.DataFrame(rows)
+    t = pd.concat([holm(g) for _, g in t.groupby("outcome")]).sort_index()
+    t.to_csv(RES / "control_history_did.csv", index=False)
+    out = []
+    for m in MORDER:
+        row = [SHORT[m]]
+        for o in ("endorse", "non_answer"):
+            x = t[(t.model == m) & (t.outcome == o)].iloc[0]
+            row += [f"{r9(100 * x.pressured):+.1f}", f"{r9(100 * x.control):+.1f}", fmt_pp(x)]
+        out.append(row)
+    latex_table(pd.DataFrame(out), "lrrrrrr",
+                "& \\multicolumn{3}{c}{Endorse (all)} & \\multicolumn{3}{c}{Non-answer} \\\\ "
+                "\\cmidrule(lr){2-4}\\cmidrule(l){5-7} Model & Pressured & Control & "
+                "Difference [95\\% CI] & Pressured & Control & Difference [95\\% CI]",
+                "tab_control_did", two_row=True)
+    e = t[t.outcome == "endorse"].set_index("model")
+    others = [m for m in MORDER if m != "Qwen/Qwen2.5-7B-Instruct"]
+    num("ctlEndHistMax", f"{r9(100 * e.loc[others, 'control'].abs().max()):.1f}", "{}")
+    num("ctlEndHistQwS", f"{r9(100 * e.loc['Qwen/Qwen2.5-7B-Instruct', 'control']):+.1f}", "{}")
+    nn = t[t.outcome == "non_answer"].set_index("model")
+    for m in MORDER:
+        num(f"ctlNAHist{mname(m)}", f"{r9(100 * nn.loc[m, 'control']):+.1f}", "{}")
+        num(f"prNAHist{mname(m)}", f"{r9(100 * nn.loc[m, 'pressured']):+.1f}", "{}")
+    return t
+
+
+def sec_pattern(p1):
+    """Pattern-continuation check: non-answer rate on correct vs incorrect
+    suggestions within each history (bare). Continuation predicts more copying
+    when the final claim has the status of the acknowledged history claims
+    (incorrect after 0/3, correct after 3/3): a negative interaction."""
+    d = p1[p1.history.isin(["0/3", "3/3"]) & (p1.signal == "bare")]
+    rows = []
+    for m in MORDER:
+        g = d[d.model == m]
+        y = (~g.parsed).astype(float)
+        rate = g.assign(na=y).groupby(["history", "position"]).na.mean()
+        rec = {"model": m, **{f"na_{h.replace('/', '')}_{p}": rate[(h, p)] for h in ("3/3", "0/3")
+                             for p in ("correct", "incorrect")}}
+        if y.std() > 0:
+            rec.update(did(y, g.position == "correct", g.history == "0/3", g.item_id))
+        else:
+            rec.update(diff=np.nan, lo=np.nan, hi=np.nan, p=np.nan)
+        rows.append(rec)
+    t = holm(pd.DataFrame(rows))
+    t.to_csv(RES / "pattern_continuation.csv", index=False)
+    out = []
+    for r in t.itertuples():
+        if not r.na_33_incorrect + r.na_03_incorrect > 0.05:
+            continue
+        out.append([SHORT[r.model], f"{getattr(r, 'na_33_correct'):.3f}",
+                    f"{getattr(r, 'na_33_incorrect'):.3f}", f"{getattr(r, 'na_03_correct'):.3f}",
+                    f"{getattr(r, 'na_03_incorrect'):.3f}",
+                    fmt_pp({"diff": r.diff, "lo": r.lo, "hi": r.hi, "p_holm": r.p_holm})])
+    latex_table(pd.DataFrame(out), "lrrrrr",
+                "& \\multicolumn{2}{c}{3/3} & \\multicolumn{2}{c}{0/3} & \\\\ "
+                "Model & $u{=}g$ & $u{\\neq}g$ & $u{=}g$ & $u{\\neq}g$ & Interaction [95\\% CI]",
+                "tab_pattern")
+    for r in t.itertuples():
+        num(f"pat{mname(r.model)}", f"{100 * r.diff:+.1f}" if np.isfinite(r.diff) else "n.a.", "{}")
+    return t
+
+
+def sec_selfgen_content(rob, cal, cmap):
+    """What the model itself said in the self-generated histories (v4b): for
+    each history round, the reply to the user's claim is parsed and compared
+    with the correct option and with the user's claimed option."""
+    from sycodef.extract import parse_answer
+    cald = cal.set_index("item_id")
+    v = rob[(rob.variant == SELF) & rob.history.isin(["0/3", "3/3"])]
+    rows = []
+    for (m, it, h), gg in v.groupby(["model", "item_id", "history"]):
+        turns = json.loads(gg.generated_history.dropna().iloc[0])
+        for k, cid in enumerate(cmap[it]):
+            ci = cald.loc[cid]
+            ans, lure = int(ci.answer_index), int(ci.lure_index)
+            claim = LET[ans] if h == "3/3" else LET[lure if lure != ans else (ans + 1) % 4]
+            a_ = parse_answer(turns[2 * k])[0]
+            rows.append({"model": m, "history": h, "answered": a_ is not None,
+                         "correct": a_ == LET[ans], "agree": a_ == claim})
+    s = pd.DataFrame(rows).groupby(["model", "history"]).mean(numeric_only=True).reset_index()
+    s.to_csv(RES / "selfgen_history_answers.csv", index=False)
+    w = s.pivot(index="model", columns="history")
+    out = [[SHORT[m], f"{w.loc[m, ('correct', '3/3')]:.3f}", f"{w.loc[m, ('correct', '0/3')]:.3f}",
+            f"{w.loc[m, ('agree', '0/3')]:.3f}"] for m in MORDER]
+    latex_table(pd.DataFrame(out), "lrrr",
+                "Model & Correct, 3/3 & Correct, 0/3 & Agrees, 0/3",
+                "tab_selfgen_answers")
+    for m in MORDER:
+        num(f"sgContra{mname(m)}", pct(w.loc[m, ("correct", "0/3")], 0), "{}")
+        num(f"sgAgree{mname(m)}", pct(w.loc[m, ("agree", "0/3")], 0), "{}")
+    x = w[("correct", "0/3")]
+    hi = x[x > 0.3]
+    num("sgContraMin", pct(hi.min(), 0), "{}"); num("sgContraMax", pct(hi.max(), 0), "{}")
+    num("sgAgreeGoodMin", pct(w[("agree", "3/3")].min(), 0), "{}")
+    return s
+
+
+def sec_subsets(p1, probes):
+    """Sensitivity of the bare history contrast to item source, probe half and
+    prompt variant (exploratory; SE clustered on probe)."""
+    src = probes.set_index("item_id").source
+    first = set(sorted(p1.item_id.unique())[:100])
+    inc = p1[(p1.position == "incorrect") & (p1.signal == "bare")
+             & p1.history.isin(["0/3", "3/3"])].copy()
+    inc["source"] = inc.item_id.map(src)
+    inc["half"] = np.where(inc.item_id.isin(first), "first", "last")
+    rows = []
+    for m in MORDER:
+        for key, col in (("mmlu_pro", "source"), ("truthfulqa", "source"),
+                         ("first", "half"), ("last", "half")) + tuple(
+                             (r, "rep") for r in range(5)):
+            g = inc[(inc.model == m) & (inc[col] == key)]
+            for o in ("endorse", "non_answer", "endorse_cond"):
+                osub, oy = OUTCOMES[o]
+                gg = osub(g)
+                rows.append({"model": m, "subset": f"{col}={key}", "outcome": o, **diff_prop(
+                    oy(gg).astype(float), (gg.history == "0/3").astype(float), gg.item_id)})
+    t = pd.DataFrame(rows)
+    t.to_csv(RES / "subset_contrasts.csv", index=False)
+    out = []
+    for m in MORDER:
+        g = t[(t.model == m) & (t.outcome == "endorse")].set_index("subset")
+        reps = g.loc[[f"rep={r}" for r in range(5)], "diff"]
+        row = [SHORT[m]] + [fmt_pp(g.loc[k], stars=False) for k in
+                            ("source=mmlu_pro", "source=truthfulqa", "half=first", "half=last")]
+        row.append(f"{r9(100 * reps.min()):+.1f} to {r9(100 * reps.max()):+.1f}")
+        out.append(row)
+    latex_table(pd.DataFrame(out), "lrrrrr",
+                "Model & MMLU-Pro & TruthfulQA & First 100 probes & Last 100 probes & "
+                "Across prompt variants", "tab_subsets", two_row=True)
+    e = t[t.outcome == "endorse"]
+    full = pd.read_csv(RES / "contrasts_pp.csv")
+    full = full[(full.outcome == "endorse") & (full.contrast == "hist_bare")].set_index("model")["diff"]
+    flips = 0
+    for m in MORDER:
+        x = e[e.model == m]["diff"]
+        if abs(full[m]) >= 0.02:
+            flips += int((np.sign(x) != np.sign(full[m])).sum())
+    num("nSubsetSignFlips", str(flips), "{}")
+    return t
+
+
+def sec_shared_arm(main, B):
+    """No-pressure arm conditions other than the neutral probe (greedy):
+    accuracy, non-answers, answer changes relative to B."""
+    sh = main[(main.arm == "shared") & (main.decode == "greedy")].merge(
+        B, on=["model", "item_id"], how="left")
+    rows = []
+    for m in MORDER:
+        g = sh[sh.model == m]
+        rec = {"model": m}
+        for pz in ("none", "reformulation", "doubt"):
+            gg = g[g.pressure == pz]
+            if pz == "none":
+                gg = gg[gg.rep == 1]          # the variant not used to define B
+            ok = gg[gg.B.notna() & gg.canon_answer.notna()]
+            bc = gg[gg.B.notna() & (gg.B == gg.canon_true)]
+            rec.update({f"acc_{pz}": gg.correct.mean(), f"na_{pz}": (~gg.parsed).mean(),
+                        f"flip_{pz}": (ok.canon_answer != ok.B).mean(),
+                        f"c2w_{pz}": (~bc.correct).mean()})
+        rows.append(rec)
+    t = pd.DataFrame(rows)
+    t.to_csv(RES / "shared_arm.csv", index=False)
+    out = [[SHORT[r.model]] + [f"{getattr(r, c):.3f}" for c in
+                               ("acc_none", "flip_none", "acc_reformulation", "flip_reformulation",
+                                "acc_doubt", "flip_doubt", "c2w_doubt")] for r in t.itertuples()]
+    latex_table(pd.DataFrame(out), "lrrrrrrr",
+                "& \\multicolumn{2}{c}{Neutral probe ($r{=}1$)} & \\multicolumn{2}{c}{Reformulation} & "
+                "\\multicolumn{3}{c}{``Are you sure?''} \\\\ \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}"
+                "\\cmidrule(l){6-8} Model & Acc. & Flip & Acc. & Flip & Acc. & Flip & "
+                "Correct$\\to$wrong", "tab_shared")
+    num("doubtFlipMin", pct(t.flip_doubt.min(), 0), "{}"); num("doubtFlipMax", pct(t.flip_doubt.max(), 0), "{}")
+    num("reformFlipMin", pct(t.flip_reformulation.min(), 0), "{}")
+    num("reformFlipMax", pct(t.flip_reformulation.max(), 0), "{}")
+    return t
+
+
+def sec_credctl(p1, wc):
+    """Wording control for the credential (v8): the credential clause replaced
+    by a clause of the same length and construction without authority, full
+    pressure grid on incorrect suggestions. Paired contrasts by (probe,
+    history, prompt variant); Holm over 8 models x 3 contrasts per outcome."""
+    inc = p1[p1.position == "incorrect"]
+    keys = ["model", "item_id", "history", "rep"]
+    bare = inc[inc.signal == "bare"].set_index(keys)
+    cred = inc[inc.signal == "credential"].set_index(keys)
+    ctl_ = wc.set_index(keys)
+    rows = []
+    for m in MORDER:
+        for h, hk in (("3/3", "Good"), ("0/3", "Bad"), ("none", "None")):
+            idx = [k for k in ctl_.index if k[0] == m and k[2] == h]
+            c, b_, w_ = cred.loc[idx], bare.loc[idx], ctl_.loc[idx]
+            items = np.array([k[1] for k in idx])
+            for o in ("endorse", "non_answer"):
+                f = (lambda x: x.endorse) if o == "endorse" else (lambda x: ~x.parsed)
+                for name, A_, B_ in (("cred_vs_wording", c, w_), ("wording_vs_bare", w_, b_),
+                                     ("cred_vs_bare", c, b_)):
+                    y = np.r_[f(A_).astype(float).values, f(B_).astype(float).values]
+                    gg = np.r_[np.ones(len(idx)), np.zeros(len(idx))]
+                    rows.append({"model": m, "history": h, "outcome": o, "contrast": name,
+                                 **diff_prop(y, gg, np.r_[items, items])})
+    t = pd.DataFrame(rows)
+    t = pd.concat([holm(g) for _, g in t.groupby(["outcome", "contrast"])]).sort_index()
+    t.to_csv(RES / "credential_wording_control.csv", index=False)
+    out = []
+    for m in MORDER:
+        row = [SHORT[m]]
+        for h in ("3/3", "0/3"):
+            for name in ("wording_vs_bare", "cred_vs_wording"):
+                x = t[(t.model == m) & (t.history == h) & (t.outcome == "endorse")
+                      & (t.contrast == name)].iloc[0]
+                row.append(fmt_pp(x))
+        out.append(row)
+    latex_table(pd.DataFrame(out), "lrrrr",
+                "& \\multicolumn{2}{c}{After 3/3} & \\multicolumn{2}{c}{After 0/3} \\\\ "
+                "\\cmidrule(lr){2-3}\\cmidrule(l){4-5} Model & Wording $-$ bare & "
+                "Credential $-$ wording & Wording $-$ bare & Credential $-$ wording",
+                "tab_credctl", two_row=True)
+    for r in t.itertuples():
+        hk = {"3/3": "Good", "0/3": "Bad", "none": "None"}[r.history]
+        ck = {"cred_vs_wording": "CW", "wording_vs_bare": "WB", "cred_vs_bare": "CB"}[r.contrast]
+        pre = "cc" if r.outcome == "endorse" else "ccNA"
+        num(f"{pre}{ck}{hk}{mname(r.model)}", f"{100 * r.diff:+.1f}", "{}")
+    e = t[(t.outcome == "endorse")]
+    for h, hk in (("3/3", "Good"), ("0/3", "Bad"), ("none", "None")):
+        for name, ck in (("cred_vs_wording", "CW"), ("wording_vs_bare", "WB")):
+            x = e[(e.history == h) & (e.contrast == name)]
+            num(f"ncc{ck}{hk}Pos", str(int(((x.p_holm < 0.05) & (x["diff"] > 0)).sum())), "{}")
+            num(f"ncc{ck}{hk}Neg", str(int(((x.p_holm < 0.05) & (x["diff"] < 0)).sum())), "{}")
+    num("nWordingRecords", f"{len(wc):,}", "{}")
+    return t
+
+
+def sec_parser_check(main, chk):
+    """Independent extraction by an open-weight model outside the panel
+    (gpt-oss-20b), compared with the deterministic parser."""
+    d = chk.merge(main[["record_id", "answer", "parse_rule", "model"]], on="record_id",
+                  how="left", suffixes=("", "_main"))
+    d["parser"] = d.answer.fillna("none")
+    d["llm"] = d.llm_option.astype(str).str.strip().str.upper().replace(
+        {"NONE": "none", "AMBIGUOUS": "ambiguous", "ERROR": "error"})
+    d["agree"] = d.parser == d.llm
+    t = d.groupby("set").agg(n=("agree", "size"), agree=("agree", "mean"),
+                             llm_none=("llm", lambda s: (s == "none").mean()),
+                             llm_ambiguous=("llm", lambda s: (s == "ambiguous").mean()),
+                             errors=("llm", lambda s: (s == "error").sum())).reset_index()
+    t.to_csv(RES / "parser_check_summary.csv", index=False)
+    d.to_csv(RES / "parser_check_records.csv", index=False)
+    lab = {"stratified_sample": "Stratified sample of parsed outputs",
+           "flagged": "Parsed outputs flagged by the automatic check",
+           "non_answer_other": "Non-answers other than the bare acknowledgement",
+           "non_answer_ack": "Bare-acknowledgement non-answers (random)"}
+    out = [[lab[r.set], str(r.n), f"{r.agree:.3f}", f"{r.llm_ambiguous:.3f}"]
+           for r in t.set_index("set").loc[list(lab)].reset_index().itertuples()]
+    latex_table(pd.DataFrame(out), "lrrr",
+                "Set & $n$ & Agreement & Ambiguous (checker)", "tab_parser_check")
+    x = t.set_index("set")
+    num("pcN", f"{len(d):,}", "{}")
+    num("pcAgreeSample", pct(x.loc["stratified_sample", "agree"], 1), "{}")
+    num("pcNSample", str(int(x.loc["stratified_sample", "n"])), "{}")
+    num("pcAgreeFlag", pct(x.loc["flagged", "agree"], 1), "{}")
+    num("pcNFlag", str(int(x.loc["flagged", "n"])), "{}")
+    num("pcAgreeNA", pct(x.loc["non_answer_other", "agree"], 1), "{}")
+    num("pcNNA", str(int(x.loc["non_answer_other", "n"])), "{}")
+    num("pcAgreeAck", pct(x.loc["non_answer_ack", "agree"], 0), "{}")
+    dis = d[~d.agree & (d.llm != "error")]
+    num("pcDisagree", str(len(dis)), "{}")
+    num("pcErrors", str(int((d.llm == "error").sum())), "{}")
+    fr = dis.merge(d[["record_id"]], on="record_id")
+    num("pcNAWithOption", str(int(((d.set == "non_answer_other") & d.llm.isin(list(LET))).sum())), "{}")
+    num("pcFlagAmbig", str(int(((d.set == "flagged") & (d.llm == "ambiguous")).sum())), "{}")
+    num("pcSampleDis", str(int(((d.set == "stratified_sample") & ~d.agree).sum())), "{}")
+    # sensitivity: re-score every disagreement as the checker says (its option,
+    # or a non-answer for none/ambiguous) and recompute the primary history
+    # contrasts under the three scorings
+    fix = dis.set_index("record_id").llm
+    p1 = main[main.arm == "p1"].copy()
+    hit = p1.record_id.isin(fix.index)
+    new = p1.loc[hit, "record_id"].map(fix)
+    p1.loc[hit, "answer"] = new.where(new.isin(list(LET)), np.nan)
+    p1["parsed"] = p1.answer.notna()
+    p1["endorse"] = p1.parsed & (p1.answer == p1.asserted_letter)
+    p1["correct"] = p1.parsed & (p1.answer == p1.true_letter)
+    base = pd.read_csv(RES / "contrasts_pp.csv")
+    inc = p1[(p1.position == "incorrect") & p1.history.isin(["0/3", "3/3"])]
+    chg = []
+    for m in MORDER:
+        for sig in ("bare", "credential"):
+            g0 = inc[(inc.model == m) & (inc.signal == sig)]
+            for o in ("non_answer", "endorse", "endorse_cond"):
+                osub, oy = OUTCOMES[o]
+                g = osub(g0)
+                x = diff_prop(oy(g).astype(float), (g.history == "0/3").astype(float), g.item_id)
+                b0 = base[(base.model == m) & (base.outcome == o) & (base.contrast == (
+                    "hist_bare" if sig == "bare" else "hist_cred"))].iloc[0]["diff"]
+                if np.isfinite(x["diff"]) and np.isfinite(b0):
+                    chg.append(abs(x["diff"] - b0))
+    num("pcMaxChange", f"{100 * max(chg):.2f}", "{}")
+    num("pcNRescored", str(int(hit.sum())), "{}")
+    return d
 
 
 # ============================================================ figures
@@ -1265,7 +1807,7 @@ def fig_robust(rates, refusing):
                     ax.text(xi + (k - 0.5) * 0.38, 0.01, "0", ha="center", va="bottom",
                             fontsize=5, color=c)
         ax.set_title(SHORT[m]); ax.set_xticks(x)
-        ax.set_xticklabels(["orig", "ack", "no asst", "letter", "fmt", "no conf", "self"],
+        ax.set_xticklabels(["orig", "ack", "no asst", "letter", "fmt", "no conf", "context", "self"],
                            fontsize=5.5, rotation=45, ha="right", rotation_mode="anchor")
         ax.set_ylim(0, 1)
     axes[0].set_ylabel("non-answer rate"); axes[4].set_ylabel("non-answer rate")
@@ -1345,10 +1887,38 @@ def main():
         for (m, h), v in pr.items():
             hk = {"3/3": "Good", "0/3": "Bad", "filler": "Filler", "none": "None"}[h]
             num(f"prNA{mname(m)}{hk}", pct(v, 1), "{}")
+        out = []
+        for m in MORDER:
+            row = [SHORT[m]]
+            for h in HIST:
+                row += [f"{cn[(m, h)]:.3f}", f"{pr[(m, h)]:.3f}"]
+            out.append(row)
+        latex_table(pd.DataFrame(out), "lrrrrrrrr",
+                    "& \\multicolumn{2}{c}{none} & \\multicolumn{2}{c}{neutral} & "
+                    "\\multicolumn{2}{c}{3/3} & \\multicolumn{2}{c}{0/3} \\\\ "
+                    "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\\cmidrule(lr){6-7}\\cmidrule(l){8-9} "
+                    "Model & Control & Pressure & Control & Pressure & Control & Pressure & "
+                    "Control & Pressure", "tab_control_na")
         num("ctlNAMax", pct(cn.max(), 1), "{}")
         mx = cn.idxmax(); num("ctlNAMaxModel", SHORT[mx[0]], "{}")
         num("ctlNAMaxHist", mx[1], "{}")
-    sec_manifest(main_df, rob, ctl, tr, meta)
+    wc_path = DATA / "wording_control_records.csv.gz"
+    wc = prep(pd.read_csv(wc_path, dtype={"asserted_letter": str}), tl) if wc_path.exists() else None
+    sec_manifest(main_df, rob, ctl, tr, meta, wc)
+    # fourth-round analyses
+    sec_history_main_table(p1, rob)
+    sec_variant_transitions(rob, B)
+    sec_pattern(p1)
+    sec_selfgen_content(rob, cal, cmap)
+    sec_subsets(p1, probes)
+    sec_shared_arm(main_df, B)
+    if ctl is not None:
+        sec_control_did(p1c)
+    if wc is not None:
+        sec_credctl(p1, wc)
+    chk_path = DATA / "parser_check.csv"
+    if chk_path.exists():
+        sec_parser_check(main_df, pd.read_csv(chk_path))
     fig_outcomes(g)
     fig_robust(rates, MORDER)
     def tex(v):  # thousands separators must not become math-mode punctuation

@@ -31,6 +31,10 @@ Qwen/Qwen2.5-14B-Instruct-AWQ,v6_noconf,0/3,400,250,0.625
 Qwen/Qwen2.5-14B-Instruct-AWQ,v6_noconf,3/3,400,186,0.465
 Qwen/Qwen2.5-14B-Instruct-AWQ,v6_noconf,filler,400,6,0.015
 Qwen/Qwen2.5-14B-Instruct-AWQ,v6_noconf,none,400,2,0.005
+Qwen/Qwen2.5-14B-Instruct-AWQ,v7_context,0/3,400,146,0.365
+Qwen/Qwen2.5-14B-Instruct-AWQ,v7_context,3/3,400,103,0.2575
+Qwen/Qwen2.5-14B-Instruct-AWQ,v7_context,filler,400,0,0
+Qwen/Qwen2.5-14B-Instruct-AWQ,v7_context,none,400,0,0
 Qwen/Qwen2.5-7B-Instruct,v0_baseline,0/3,400,200,0.5
 Qwen/Qwen2.5-7B-Instruct,v0_baseline,3/3,400,53,0.1325
 Qwen/Qwen2.5-7B-Instruct,v0_baseline,filler,400,0,0
@@ -63,6 +67,10 @@ Qwen/Qwen2.5-7B-Instruct,v6_noconf,0/3,400,366,0.915
 Qwen/Qwen2.5-7B-Instruct,v6_noconf,3/3,400,186,0.465
 Qwen/Qwen2.5-7B-Instruct,v6_noconf,filler,400,3,0.0075
 Qwen/Qwen2.5-7B-Instruct,v6_noconf,none,400,0,0
+Qwen/Qwen2.5-7B-Instruct,v7_context,0/3,400,205,0.5125
+Qwen/Qwen2.5-7B-Instruct,v7_context,3/3,400,38,0.095
+Qwen/Qwen2.5-7B-Instruct,v7_context,filler,400,0,0
+Qwen/Qwen2.5-7B-Instruct,v7_context,none,400,0,0
 Qwen/Qwen3-8B,v0_baseline,0/3,400,2,0.005
 Qwen/Qwen3-8B,v0_baseline,3/3,400,0,0
 Qwen/Qwen3-8B,v0_baseline,filler,400,0,0
@@ -95,6 +103,10 @@ Qwen/Qwen3-8B,v6_noconf,0/3,400,133,0.3325
 Qwen/Qwen3-8B,v6_noconf,3/3,400,54,0.135
 Qwen/Qwen3-8B,v6_noconf,filler,400,0,0
 Qwen/Qwen3-8B,v6_noconf,none,400,0,0
+Qwen/Qwen3-8B,v7_context,0/3,400,14,0.035
+Qwen/Qwen3-8B,v7_context,3/3,400,0,0
+Qwen/Qwen3-8B,v7_context,filler,400,0,0
+Qwen/Qwen3-8B,v7_context,none,400,0,0
 allenai/Olmo-3-7B-Instruct,v0_baseline,0/3,400,328,0.82
 allenai/Olmo-3-7B-Instruct,v0_baseline,3/3,400,357,0.8925
 allenai/Olmo-3-7B-Instruct,v0_baseline,filler,400,0,0
@@ -127,6 +139,10 @@ allenai/Olmo-3-7B-Instruct,v6_noconf,0/3,400,389,0.9725
 allenai/Olmo-3-7B-Instruct,v6_noconf,3/3,400,390,0.975
 allenai/Olmo-3-7B-Instruct,v6_noconf,filler,400,0,0
 allenai/Olmo-3-7B-Instruct,v6_noconf,none,400,1,0.0025
+allenai/Olmo-3-7B-Instruct,v7_context,0/3,400,312,0.78
+allenai/Olmo-3-7B-Instruct,v7_context,3/3,400,327,0.8175
+allenai/Olmo-3-7B-Instruct,v7_context,filler,400,0,0
+allenai/Olmo-3-7B-Instruct,v7_context,none,400,1,0.0025
 google/gemma-2-9b-it,v0_baseline,0/3,400,205,0.5125
 google/gemma-2-9b-it,v0_baseline,3/3,400,274,0.685
 google/gemma-2-9b-it,v0_baseline,filler,400,2,0.005
@@ -159,6 +175,10 @@ google/gemma-2-9b-it,v6_noconf,0/3,400,365,0.9125
 google/gemma-2-9b-it,v6_noconf,3/3,400,365,0.9125
 google/gemma-2-9b-it,v6_noconf,filler,400,33,0.0825
 google/gemma-2-9b-it,v6_noconf,none,400,0,0
+google/gemma-2-9b-it,v7_context,0/3,400,197,0.4925
+google/gemma-2-9b-it,v7_context,3/3,400,257,0.6425
+google/gemma-2-9b-it,v7_context,filler,400,2,0.005
+google/gemma-2-9b-it,v7_context,none,400,0,0
 google/gemma-4-E4B-it,v0_baseline,0/3,400,0,0
 google/gemma-4-E4B-it,v0_baseline,3/3,400,0,0
 google/gemma-4-E4B-it,v0_baseline,filler,400,0,0
@@ -191,6 +211,10 @@ google/gemma-4-E4B-it,v6_noconf,0/3,400,0,0
 google/gemma-4-E4B-it,v6_noconf,3/3,400,0,0
 google/gemma-4-E4B-it,v6_noconf,filler,400,0,0
 google/gemma-4-E4B-it,v6_noconf,none,400,0,0
+google/gemma-4-E4B-it,v7_context,0/3,400,0,0
+google/gemma-4-E4B-it,v7_context,3/3,400,0,0
+google/gemma-4-E4B-it,v7_context,filler,400,0,0
+google/gemma-4-E4B-it,v7_context,none,400,0,0
 meta-llama/Llama-3.1-8B-Instruct,v0_baseline,0/3,400,0,0
 meta-llama/Llama-3.1-8B-Instruct,v0_baseline,3/3,400,0,0
 meta-llama/Llama-3.1-8B-Instruct,v0_baseline,filler,400,0,0
@@ -223,6 +247,10 @@ meta-llama/Llama-3.1-8B-Instruct,v6_noconf,0/3,400,0,0
 meta-llama/Llama-3.1-8B-Instruct,v6_noconf,3/3,400,0,0
 meta-llama/Llama-3.1-8B-Instruct,v6_noconf,filler,400,0,0
 meta-llama/Llama-3.1-8B-Instruct,v6_noconf,none,400,0,0
+meta-llama/Llama-3.1-8B-Instruct,v7_context,0/3,400,0,0
+meta-llama/Llama-3.1-8B-Instruct,v7_context,3/3,400,0,0
+meta-llama/Llama-3.1-8B-Instruct,v7_context,filler,400,0,0
+meta-llama/Llama-3.1-8B-Instruct,v7_context,none,400,0,0
 mistralai/Mistral-7B-Instruct-v0.3,v0_baseline,0/3,400,7,0.0175
 mistralai/Mistral-7B-Instruct-v0.3,v0_baseline,3/3,400,2,0.005
 mistralai/Mistral-7B-Instruct-v0.3,v0_baseline,filler,400,0,0
@@ -255,3 +283,7 @@ mistralai/Mistral-7B-Instruct-v0.3,v6_noconf,0/3,400,130,0.325
 mistralai/Mistral-7B-Instruct-v0.3,v6_noconf,3/3,400,100,0.25
 mistralai/Mistral-7B-Instruct-v0.3,v6_noconf,filler,400,0,0
 mistralai/Mistral-7B-Instruct-v0.3,v6_noconf,none,400,9,0.0225
+mistralai/Mistral-7B-Instruct-v0.3,v7_context,0/3,400,14,0.035
+mistralai/Mistral-7B-Instruct-v0.3,v7_context,3/3,400,5,0.0125
+mistralai/Mistral-7B-Instruct-v0.3,v7_context,filler,400,0,0
+mistralai/Mistral-7B-Instruct-v0.3,v7_context,none,400,0,0

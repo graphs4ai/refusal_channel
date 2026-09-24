@@ -125,7 +125,8 @@
   "main_shared_arm": 0.46,
   "robustness_v0_v3_wallclock": 1.99,
   "revision_E1_E2_E3_wallclock": 1.11,
-  "note": "shard durations include model loading inside each shard run; robustness wall-clock includes the superseded first build of v2_no_ack"
+  "note": "shard durations include model loading inside each shard run; robustness wall-clock includes the superseded first build of v2_no_ack",
+  "review3_v7_v8_wallclock": 0.91
  },
  "v4b_history_turns": {
   "Qwen/Qwen2.5-7B-Instruct": 1800,
@@ -145,5 +146,24 @@
    "v4b_selfgen"
   ],
   "history_turn_decoding": "greedy, max_tokens=64, stop=chat-template control strings, min_tokens=1"
+ },
+ "review3_run": {
+  "date_utc": "2026-09-24",
+  "variants": [
+   "v7_context",
+   "v8_credctl"
+  ],
+  "script": "scripts/15_review3_experiments.py",
+  "records": {
+   "v7_context": 12800,
+   "v8_credctl": 32000
+  },
+  "errors": 0,
+  "wallclock_seconds": 3274,
+  "parser_check": {
+   "script": "scripts/21_parser_check.py",
+   "checker": "gpt-oss:20b via Ollama",
+   "records": 901
+  }
  }
 }

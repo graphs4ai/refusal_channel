@@ -1,0 +1,17 @@
+model,history,answered,correct,agree
+Qwen/Qwen2.5-14B-Instruct-AWQ,0/3,1,0.67,0.2133333333
+Qwen/Qwen2.5-14B-Instruct-AWQ,3/3,1,0.9133333333,0.9133333333
+Qwen/Qwen2.5-7B-Instruct,0/3,1,0.53,0.36
+Qwen/Qwen2.5-7B-Instruct,3/3,1,0.91,0.91
+Qwen/Qwen3-8B,0/3,1,0.61,0.2766666667
+Qwen/Qwen3-8B,3/3,1,0.93,0.93
+allenai/Olmo-3-7B-Instruct,0/3,1,0.1066666667,0.85
+allenai/Olmo-3-7B-Instruct,3/3,1,0.98,0.98
+google/gemma-2-9b-it,0/3,1,0.58,0.2966666667
+google/gemma-2-9b-it,3/3,1,0.8866666667,0.8866666667
+google/gemma-4-E4B-it,0/3,1,0.61,0.2733333333
+google/gemma-4-E4B-it,3/3,1,0.9,0.9
+meta-llama/Llama-3.1-8B-Instruct,0/3,1,0.42,0.4833333333
+meta-llama/Llama-3.1-8B-Instruct,3/3,1,0.95,0.95
+mistralai/Mistral-7B-Instruct-v0.3,0/3,0.9166666667,0.1333333333,0.7366666667
+mistralai/Mistral-7B-Instruct-v0.3,3/3,0.9133333333,0.8933333333,0.8933333333

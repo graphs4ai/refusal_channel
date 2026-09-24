@@ -1,0 +1,38 @@
+\begin{tabular}{lllrrrrrr}
+\toprule
+Model & History & Signal & $n$ & Correct & Endorse & Other wrong & Non-answer & $P(\text{endorse}\mid\text{parsed})$ \\
+\midrule
+Mistral-7B-v0.3 & \texttt{none} & bare & 1,000 & 14 & 983 & 3 & 0 & 0.983 \\
+ & \texttt{none} & cred. & 1,000 & 14 & 982 & 4 & 0 & 0.982 \\
+ & \texttt{neutral} & bare & 1,000 & 31 & 958 & 11 & 0 & 0.958 \\
+ & \texttt{neutral} & cred. & 1,000 & 53 & 941 & 6 & 0 & 0.941 \\
+ & \texttt{3/3} & bare & 1,000 & 30 & 948 & 4 & 18 & 0.965 \\
+ & \texttt{3/3} & cred. & 1,000 & 47 & 944 & 9 & 0 & 0.944 \\
+ & \texttt{0/3} & bare & 1,000 & 29 & 940 & 8 & 23 & 0.962 \\
+ & \texttt{0/3} & cred. & 1,000 & 47 & 948 & 5 & 0 & 0.948 \\
+Gemma-2-9B & \texttt{none} & bare & 1,000 & 444 & 484 & 72 & 0 & 0.484 \\
+ & \texttt{none} & cred. & 1,000 & 330 & 636 & 34 & 0 & 0.636 \\
+ & \texttt{neutral} & bare & 1,000 & 403 & 517 & 80 & 0 & 0.517 \\
+ & \texttt{neutral} & cred. & 1,000 & 327 & 626 & 43 & 4 & 0.629 \\
+ & \texttt{3/3} & bare & 1,000 & 281 & 191 & 37 & 491 & 0.375 \\
+ & \texttt{3/3} & cred. & 1,000 & 114 & 110 & 4 & 772 & 0.482 \\
+ & \texttt{0/3} & bare & 1,000 & 204 & 311 & 32 & 453 & 0.569 \\
+ & \texttt{0/3} & cred. & 1,000 & 70 & 161 & 4 & 765 & 0.685 \\
+Llama-3.1-8B & \texttt{none} & bare & 1,000 & 170 & 761 & 69 & 0 & 0.761 \\
+ & \texttt{none} & cred. & 1,000 & 57 & 920 & 23 & 0 & 0.920 \\
+ & \texttt{neutral} & bare & 1,000 & 61 & 909 & 30 & 0 & 0.909 \\
+ & \texttt{neutral} & cred. & 1,000 & 30 & 950 & 20 & 0 & 0.950 \\
+ & \texttt{3/3} & bare & 1,000 & 119 & 826 & 55 & 0 & 0.826 \\
+ & \texttt{3/3} & cred. & 1,000 & 63 & 905 & 32 & 0 & 0.905 \\
+ & \texttt{0/3} & bare & 1,000 & 185 & 736 & 79 & 0 & 0.736 \\
+ & \texttt{0/3} & cred. & 1,000 & 75 & 878 & 47 & 0 & 0.878 \\
+Qwen2.5-7B & \texttt{none} & bare & 1,000 & 486 & 388 & 126 & 0 & 0.388 \\
+ & \texttt{none} & cred. & 1,000 & 441 & 467 & 92 & 0 & 0.467 \\
+ & \texttt{neutral} & bare & 1,000 & 449 & 445 & 105 & 1 & 0.445 \\
+ & \texttt{neutral} & cred. & 1,000 & 334 & 586 & 80 & 0 & 0.586 \\
+ & \texttt{3/3} & bare & 1,000 & 278 & 477 & 69 & 176 & 0.579 \\
+ & \texttt{3/3} & cred. & 1,000 & 326 & 530 & 72 & 72 & 0.571 \\
+ & \texttt{0/3} & bare & 1,000 & 128 & 213 & 36 & 623 & 0.565 \\
+ & \texttt{0/3} & cred. & 1,000 & 205 & 332 & 41 & 422 & 0.574 \\
+\bottomrule
+\end{tabular}

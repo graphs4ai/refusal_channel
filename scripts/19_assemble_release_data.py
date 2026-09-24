@@ -10,12 +10,15 @@ Inputs (all under --out):
   rev_e3_trunc_<alias>.csv       truncated non-answers re-run at 256 tokens (E3)
   rev2_<variant>_<alias>.csv     v5_format, v6_noconf, v4b_selfgen (script 14)
   rev2_lengths_<alias>.csv[.gz]  prompt-length audit (script 14)
+  rev3_v7_context_<alias>.csv    context-only system prompt (script 15)
+  rev3_v8_credctl_<alias>.csv    credential wording control (script 15)
   item_pool_probes.csv, item_pool_calibration.csv, calibration_map.json
 
 Outputs (under --data):
   main_records.csv.gz        171,200 rows: design factors, response text, parse, finish
   robustness_records.csv.gz  v0-v3 (prompt variants) + v4_selfgen, one row per record
   control_records.csv.gz     E1 matched no-pressure control
+  wording_control_records.csv.gz  credential wording control (v8), full pressure grid
   truncation_rerun.csv       E3 re-runs (64-token text, 256-token text, parses)
   prompt_lengths.csv.gz      prompt length in tokens after each chat template (script 14)
   items_probes.csv, items_calibration.csv, calibration_map.json (copied)
@@ -72,7 +75,7 @@ for f in sorted(glob.glob(f"{a.out}/rev_e2_*.csv")):
     d = pd.read_csv(f, dtype={"asserted_letter": str})
     d = d[d["error"].isna()]
     parts.append(d[[c for c in KEEP + ["generated_history"] if c in d]])
-for f in sorted(glob.glob(f"{a.out}/rev2_v*_*.csv")):
+for f in sorted(glob.glob(f"{a.out}/rev2_v*_*.csv")) + sorted(glob.glob(f"{a.out}/rev3_v7_*.csv")):
     d = pd.read_csv(f, dtype={"asserted_letter": str})
     d = d[d["error"].isna()]
     parts.append(d[[c for c in KEEP + ["generated_history"] if c in d]])
@@ -92,6 +95,17 @@ if parts:
                                         "signal", "position", "asserted_letter")
                             if c in ctl])
     ctl.to_csv(f"{a.data}/control_records.csv.gz", index=False, compression="gzip")
+
+# ---------------------------------------------------------------- v8 wording control
+parts = [pd.read_csv(f, dtype={"asserted_letter": str})
+         for f in sorted(glob.glob(f"{a.out}/rev3_v8_credctl_*.csv"))]
+n_wc = 0
+if parts:
+    wc = pd.concat(parts, ignore_index=True)
+    assert wc["error"].isna().all(), "wording control contains failed generations"
+    n_wc = len(wc)
+    wc = wc[[c for c in KEEP + ["rep"] if c in wc]]
+    wc.to_csv(f"{a.data}/wording_control_records.csv.gz", index=False, compression="gzip")
 
 # ---------------------------------------------------------------- E3
 parts = [pd.read_csv(f) for f in sorted(glob.glob(f"{a.out}/rev_e3_trunc_*.csv"))
@@ -115,4 +129,4 @@ for f in ("item_pool_probes.csv", "item_pool_calibration.csv", "calibration_map.
     shutil.copy(f"{a.out}/{f}", f"{a.data}/{dst}")
 
 print(json.dumps({"main": len(main), "robustness": len(rob),
-                  "control": n_ctl}))
+                  "control": n_ctl, "wording_control": n_wc}))
