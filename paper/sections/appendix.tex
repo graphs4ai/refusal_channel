@@ -151,38 +151,45 @@ Table~\ref{tab:taxonomy} classifies every non-answer deterministically; the
 regenerated texts of the truncated ones are in
 \texttt{data/truncation\_rerun.csv}.
 
-\paragraph{Independent check.} This establishes syntactic coverage, not
-semantic accuracy. As an independent check we gave $\pcN$ outputs to an
-open-weight model outside the evaluated panel (\texttt{gpt-oss:20b} served by
-Ollama, temperature 0, low reasoning effort), with the question, the lettered
-options and the response, and asked which option the response commits to as
-its answer, or none, or ambiguous (script and prompt in
-\texttt{scripts/21\_parser\_check.py}). The outputs are the stratified sample
-of $\pcNSample$ parsed outputs released in
+\paragraph{Independent checks.} This establishes syntactic coverage, not
+semantic accuracy. As independent checks we gave $\pcN$ outputs to two
+open-weight models outside the evaluated panel and from different
+developers, \texttt{gpt-oss:20b} (low reasoning effort) and
+\texttt{phi4:14b}, both served by Ollama at temperature 0; \texttt{phi4:14b}
+was chosen among four fast candidates as the one agreeing most with
+\texttt{gpt-oss:20b} on a trial of 60 outputs (released with the
+repository), so the two readings are not fully independent. Each saw the question, the lettered options and the response, and was
+asked which option the response commits to as its answer, or none, or
+ambiguous (\texttt{scripts/21\_parser\_check.py}). The outputs are the
+stratified sample of $\pcNSample$ parsed outputs released in
 \texttt{results/parser\_audit\_sample.csv}, all $\pcNFlag$ flagged outputs, all
 $\pcNNA$ non-answers that are not the bare acknowledgement, and 40 random
-bare acknowledgements. The checker agrees with the parser on $\pcAgreeSample\%$ of the stratified
-sample ($\pcSampleDis$ disagreements) and on all sampled bare
-acknowledgements (Table~\ref{tab:parser-check}). On the flagged outputs it
-answers ``ambiguous'' in $\pcFlagAmbig$ cases, where the parser takes the
-first declared option. Among the non-answers that are not the bare
-acknowledgement it assigns an option to $\pcNAWithOption$ of $\pcNNA$, mostly
-Mistral-7B outputs cut at the token limit, option texts without the letter
-and letters in forms no rule covers; some of these assignments are guesses
-from incomplete text. Re-scoring all $\pcNRescored$ disagreeing pressure-arm
-records as the checker says (its option, or a non-answer for ``none'' and
-``ambiguous'') changes no model's history contrast under any of the three
-scorings by more than $\pcMaxChange$~pp. This is an automated comparison, not a
-human annotation; the disagreements are listed in
+bare acknowledgements. On the stratified sample the parser agrees with
+the two checkers in $\pcAgreeSample\%$ and $\pcAgreeSampleB\%$ of cases, and
+the checkers agree with each other in $\pcCheckersSample\%$
+(Table~\ref{tab:parser-check}). Both checkers disagree with the parser, and
+agree with each other, on $\pcConsensus$ outputs: $\pcConsensusSample$ in the
+sample, $\pcConsensusFlag$ flagged outputs (read as ambiguous or as another
+option, where the parser takes the first declared one) and
+$\pcConsensusNA$ non-answers that are not the bare acknowledgement, in
+$\pcConsensusNAOpt$ of which both read an option (most are Mistral-7B
+outputs, many cut at the token limit, with option texts without the letter
+or letters in forms no rule covers). Re-scoring
+the disagreeing pressure-arm records as either checker says, or only those on
+which both checkers agree, changes no model's history contrast under any
+of the three scorings by more than $\pcMaxChange$, $\pcMaxChangeB$ and
+$\pcMaxChangeCons$~pp respectively. These are automated comparisons, not a
+human annotation; all records and both readings are in
 \texttt{results/parser\_check\_records.csv}.
 
-\begin{table}[h]
-\centering\small\setlength{\tabcolsep}{3pt}
+\begin{table*}[h]
+\centering\small\setlength{\tabcolsep}{5pt}
 \input{generated/tab_parser_check}
-\caption{Agreement between the deterministic parser and the independent
-checker (same option, or both none).}
+\caption{Agreement between the deterministic parser and the two independent
+checkers (same option, or both none). Both differ: outputs on which the two
+checkers agree with each other and not with the parser.}
 \label{tab:parser-check}
-\end{table}
+\end{table*}
 
 \begin{table*}[h]
 \centering\small\setlength{\tabcolsep}{3pt}

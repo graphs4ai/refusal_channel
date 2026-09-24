@@ -949,5 +949,21 @@
  "pcFlagAmbig": "41",
  "pcSampleDis": "6",
  "pcMaxChange": "1.90",
- "pcNRescored": "134"
+ "pcNRescored": "134",
+ "pcAgreeSampleB": "96.2",
+ "pcAgreeFlagB": "83.2",
+ "pcCheckersSample": "97.1",
+ "pcCheckersAll": "89.7",
+ "pcErrorsB": "0",
+ "pcNAWithOptionB": "123",
+ "pcFlagAmbigB": "11",
+ "pcConsensus": "116",
+ "pcConsensusSample": "4",
+ "pcConsensusFlag": "16",
+ "pcConsensusNA": "96",
+ "pcConsensusAck": "0",
+ "pcConsensusNAOpt": "96",
+ "pcMaxChangeB": "2.19",
+ "pcMaxChangeCons": "1.10",
+ "pcNRescoredCons": "94"
 }

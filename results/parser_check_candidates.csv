@@ -1,0 +1,5 @@
+model,developer,n,agree_gptoss,agree_parser,sec_per_output,agree_gptoss_stratified_sample,agree_gptoss_flagged,agree_gptoss_non_answer_other
+phi4:14b,Microsoft,60,0.85,0.65,0.32,1.0,0.8,0.8
+granite3.3:8b,IBM,60,0.633,0.5,0.2,0.933,0.56,0.5
+exaone3.5:7.8b,LG AI Research,60,0.767,0.6,0.25,0.933,0.68,0.75
+command-r7b,Cohere,60,0.833,0.65,0.44,0.933,0.8,0.8

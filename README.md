@@ -45,7 +45,7 @@ Gated checkpoints (Llama-3.1, Gemma) need a Hugging Face token.
 | auxiliary experiments III | `15_review3_experiments.py` | v7 context-only system prompt (robustness grid), v8 credential wording control (full pressure grid, incorrect suggestions) |
 | release tables | `19_assemble_release_data.py` | `data/*.csv.gz` |
 | paper | `20_paper_analysis.py` | tables, figures, macros |
-| parser check | `21_parser_check.py` | independent answer extraction by an open-weight model outside the panel (gpt-oss-20b via Ollama): `build`, `annotate`, `collect` → `data/parser_check.csv` |
+| parser check | `21_parser_check.py` | independent answer extraction by two open-weight models outside the panel (gpt-oss-20b and phi4-14b via Ollama): `build`, `annotate`, `collect` → `data/parser_check.csv`; the second checker was picked among four candidates on 60 outputs (`results/parser_check_candidates.csv`, `results/parser_check_candidates_input.jsonl`) |
 
 Scripts `04`, `05`, `07`, `08`, `10` are earlier analyses (two-stage model,
 power simulations) kept for transparency; the paper's numbers come from `20`.
@@ -60,7 +60,7 @@ older system `nvcc`.
 | `data/main_records.csv.gz` | 171,200 | pressure arm (128,000) and no-pressure arm (43,200): design factors, full response text, parsed option, parse rule, finish reason, timestamp |
 | `data/robustness_records.csv.gz` | 115,200 | variants v0–v3, v5, v6, v7, and the two self-generated-history builds v4 and v4b (with the generated assistant turns) |
 | `data/wording_control_records.csv.gz` | 32,000 | v8 credential wording control (200 probes × 4 histories × 5 prompt variants, incorrect suggestions) |
-| `data/parser_check.csv` | 901 | independent checker's option for the parser-check sample (script 21) |
+| `data/parser_check.csv` | 901 | options read by the two independent checkers for the parser-check sample (script 21) |
 | `data/prompt_lengths.csv.gz` | 273,600 | prompt length in tokens after each model's chat template |
 | `data/control_records.csv.gz` | 32,000 | E1 matched no-assertion control |
 | `data/truncation_rerun.csv` | 133 | truncated non-answers, 64-token and 256-token texts |

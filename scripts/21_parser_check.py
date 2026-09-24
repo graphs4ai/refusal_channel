@@ -3,7 +3,13 @@ the evaluated panel (gpt-oss-20b served by Ollama).
 
   python scripts/21_parser_check.py build            # -> results/parser_check_input.jsonl
   python scripts/21_parser_check.py annotate IN OUT  # needs a local Ollama server
-  python scripts/21_parser_check.py collect OUT      # -> data/parser_check.csv
+  python scripts/21_parser_check.py collect OUT [OUT2]  # -> data/parser_check.csv
+
+Two checkers were run: gpt-oss:20b (ANNOT_THINK=low) and phi4:14b
+(ANNOT_MODEL=phi4:14b ANNOT_THINK=none, i.e. no reasoning field sent); neither
+belongs to the evaluated panel. phi4:14b was chosen among four candidates tested
+on 60 outputs (results/parser_check_candidates*.{csv,jsonl}); glm-4.7-flash with
+reasoning on was abandoned as too slow (up to 300 s per output on flagged ones).
 
 Selection (build): the released stratified sample of parsed outputs
 (results/parser_audit_sample.csv), every parsed output flagged by the automatic
@@ -19,6 +25,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL = os.environ.get("ANNOT_MODEL", "gpt-oss:20b")
+# reasoning setting passed to Ollama: "low"/"medium"/"high" (gpt-oss) or true/false
+_T = os.environ.get("ANNOT_THINK", "low")
+THINK = {"true": True, "false": False, "none": None}.get(_T.lower(), _T)  # none: omit
 PROMPT = ("You check the output of an answer parser for a multiple-choice evaluation.\n"
           "Below are a question, its four lettered options and a model's response to it.\n"
           "Decide which option the response gives as its own final answer to this question.\n"
@@ -88,7 +97,9 @@ def annotate(inp, outp):
     if os.path.exists(outp):
         for l in open(outp):
             try:
-                done.add(json.loads(l)["record_id"])
+                r = json.loads(l)
+                if r["llm_option"] != "error":  # errors are retried
+                    done.add(r["record_id"])
             except Exception:
                 pass
     recs = [json.loads(l) for l in open(inp)]
@@ -96,10 +107,12 @@ def annotate(inp, outp):
         for x in recs:
             if x["record_id"] in done:
                 continue
-            body = {"model": MODEL, "stream": False, "format": "json", "think": "low",
+            body = {"model": MODEL, "stream": False, "format": "json",
                     "options": {"temperature": 0, "seed": 0, "num_ctx": 4096},
                     "messages": [{"role": "user", "content": PROMPT.replace("{q}", x["question"])
                                   .replace("{o}", x["options"]).replace("{r}", x["response"])}]}
+            if THINK is not None:
+                body["think"] = THINK
             req = urllib.request.Request(os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434") + "/api/chat",
                                          data=json.dumps(body).encode(),
                                          headers={"Content-Type": "application/json"})
@@ -114,13 +127,21 @@ def annotate(inp, outp):
     print("annotated", sum(1 for _ in open(outp)))
 
 
-def collect(outp):
+def collect(outp, outp2=None):
     import pandas as pd
     inp = pd.read_json(ROOT / "results" / "parser_check_input.jsonl", lines=True)
-    ann = pd.read_json(outp, lines=True)
+    def _read(p):  # last reading per record wins (retried errors are appended)
+        a = pd.read_json(p, lines=True, dtype={"llm_option": str})
+        return a.drop_duplicates("record_id", keep="last")
+    ann = _read(outp)
     d = inp[["record_id", "set"]].merge(ann[["record_id", "llm_option"]], on="record_id",
                                          how="left")
     assert d.llm_option.notna().all(), "unannotated records"
+    if outp2:
+        a2 = _read(outp2).rename(
+            columns={"llm_option": "llm2_option"})
+        d = d.merge(a2[["record_id", "llm2_option"]], on="record_id", how="left")
+        assert d.llm2_option.notna().all(), "unannotated records (second checker)"
     d.to_csv(ROOT / "data" / "parser_check.csv", index=False)
     print(len(d), "->", ROOT / "data" / "parser_check.csv")
 
@@ -132,6 +153,6 @@ if __name__ == "__main__":
     elif cmd == "annotate":
         annotate(sys.argv[2], sys.argv[3])
     elif cmd == "collect":
-        collect(sys.argv[2])
+        collect(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
     else:
         raise SystemExit(__doc__)

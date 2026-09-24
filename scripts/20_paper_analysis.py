@@ -1664,49 +1664,16 @@ def sec_credctl(p1, wc):
     return t
 
 
-def sec_parser_check(main, chk):
-    """Independent extraction by an open-weight model outside the panel
-    (gpt-oss-20b), compared with the deterministic parser."""
-    d = chk.merge(main[["record_id", "answer", "parse_rule", "model"]], on="record_id",
-                  how="left", suffixes=("", "_main"))
-    d["parser"] = d.answer.fillna("none")
-    d["llm"] = d.llm_option.astype(str).str.strip().str.upper().replace(
-        {"NONE": "none", "AMBIGUOUS": "ambiguous", "ERROR": "error"})
-    d["agree"] = d.parser == d.llm
-    t = d.groupby("set").agg(n=("agree", "size"), agree=("agree", "mean"),
-                             llm_none=("llm", lambda s: (s == "none").mean()),
-                             llm_ambiguous=("llm", lambda s: (s == "ambiguous").mean()),
-                             errors=("llm", lambda s: (s == "error").sum())).reset_index()
-    t.to_csv(RES / "parser_check_summary.csv", index=False)
-    d.to_csv(RES / "parser_check_records.csv", index=False)
-    lab = {"stratified_sample": "Stratified sample of parsed outputs",
-           "flagged": "Parsed outputs flagged by the automatic check",
-           "non_answer_other": "Non-answers other than the bare acknowledgement",
-           "non_answer_ack": "Bare-acknowledgement non-answers (random)"}
-    out = [[lab[r.set], str(r.n), f"{r.agree:.3f}", f"{r.llm_ambiguous:.3f}"]
-           for r in t.set_index("set").loc[list(lab)].reset_index().itertuples()]
-    latex_table(pd.DataFrame(out), ">{\\raggedright\\arraybackslash}p{3.9cm}rrr",
-                "Set & $n$ & Agree & " + hd("Checker:", "ambiguous"), "tab_parser_check")
-    x = t.set_index("set")
-    num("pcN", f"{len(d):,}", "{}")
-    num("pcAgreeSample", pct(x.loc["stratified_sample", "agree"], 1), "{}")
-    num("pcNSample", str(int(x.loc["stratified_sample", "n"])), "{}")
-    num("pcAgreeFlag", pct(x.loc["flagged", "agree"], 1), "{}")
-    num("pcNFlag", str(int(x.loc["flagged", "n"])), "{}")
-    num("pcAgreeNA", pct(x.loc["non_answer_other", "agree"], 1), "{}")
-    num("pcNNA", str(int(x.loc["non_answer_other", "n"])), "{}")
-    num("pcAgreeAck", pct(x.loc["non_answer_ack", "agree"], 0), "{}")
-    dis = d[~d.agree & (d.llm != "error")]
-    num("pcDisagree", str(len(dis)), "{}")
-    num("pcErrors", str(int((d.llm == "error").sum())), "{}")
-    fr = dis.merge(d[["record_id"]], on="record_id")
-    num("pcNAWithOption", str(int(((d.set == "non_answer_other") & d.llm.isin(list(LET))).sum())), "{}")
-    num("pcFlagAmbig", str(int(((d.set == "flagged") & (d.llm == "ambiguous")).sum())), "{}")
-    num("pcSampleDis", str(int(((d.set == "stratified_sample") & ~d.agree).sum())), "{}")
-    # sensitivity: re-score every disagreement as the checker says (its option,
-    # or a non-answer for none/ambiguous) and recompute the primary history
-    # contrasts under the three scorings
-    fix = dis.set_index("record_id").llm
+def _norm_opt(x):
+    x = str(x).strip()
+    return x.upper() if x.upper() in LET else {"NONE": "none", "AMBIGUOUS": "ambiguous"}.get(
+        x.upper(), "error")
+
+
+def _rescore_change(main, fix):
+    """Max absolute change of the primary history contrasts (three scorings,
+    both signals) when the records in `fix` (record_id -> option or
+    none/ambiguous) are re-scored accordingly."""
     p1 = main[main.arm == "p1"].copy()
     hit = p1.record_id.isin(fix.index)
     new = p1.loc[hit, "record_id"].map(fix)
@@ -1728,8 +1695,91 @@ def sec_parser_check(main, chk):
                     "hist_bare" if sig == "bare" else "hist_cred"))].iloc[0]["diff"]
                 if np.isfinite(x["diff"]) and np.isfinite(b0):
                     chg.append(abs(x["diff"] - b0))
-    num("pcMaxChange", f"{100 * max(chg):.2f}", "{}")
-    num("pcNRescored", str(int(hit.sum())), "{}")
+    return max(chg), int(hit.sum())
+
+
+def sec_parser_check(main, chk):
+    """Independent extraction by open-weight models outside the panel
+    (gpt-oss-20b and, when present, phi4-14b), compared with the
+    deterministic parser and with each other."""
+    d = chk.merge(main[["record_id", "answer", "parse_rule", "model"]], on="record_id",
+                  how="left", suffixes=("", "_main"))
+    d["parser"] = d.answer.fillna("none")
+    d["llm"] = d.llm_option.map(_norm_opt)
+    two = "llm2_option" in d
+    d["agree"] = d.parser == d.llm
+    if two:
+        d["llm2"] = d.llm2_option.map(_norm_opt)
+        d["agree2"] = d.parser == d.llm2
+        d["checkers_agree"] = d.llm == d.llm2
+        d["consensus_against"] = d.checkers_agree & ~d.agree
+    agg = dict(n=("agree", "size"), agree=("agree", "mean"),
+               llm_ambiguous=("llm", lambda s: (s == "ambiguous").mean()),
+               errors=("llm", lambda s: (s == "error").sum()))
+    if two:
+        agg.update(agree2=("agree2", "mean"), checkers_agree=("checkers_agree", "mean"),
+                   consensus_against=("consensus_against", "sum"),
+                   errors2=("llm2", lambda s: (s == "error").sum()))
+    t = d.groupby("set").agg(**agg).reset_index()
+    t.to_csv(RES / "parser_check_summary.csv", index=False)
+    d.to_csv(RES / "parser_check_records.csv", index=False)
+    lab = {"stratified_sample": "Stratified sample of parsed outputs",
+           "flagged": "Parsed outputs flagged by the automatic check",
+           "non_answer_other": "Non-answers other than the bare acknowledgement",
+           "non_answer_ack": "Bare-acknowledgement non-answers (random)"}
+    tt = t.set_index("set").loc[list(lab)].reset_index()
+    if two:
+        out = [[lab[r.set], str(r.n), f"{r.agree:.3f}", f"{r.agree2:.3f}",
+                f"{r.checkers_agree:.3f}", str(int(r.consensus_against))] for r in tt.itertuples()]
+        latex_table(pd.DataFrame(out), ">{\\raggedright\\arraybackslash}p{3.6cm}rrrrr",
+                    "Set & $n$ & " + hd("Parser =", "gpt-oss") + " & " + hd("Parser =", "Phi-4")
+                    + " & " + hd("gpt-oss =", "Phi-4") + " & " + hd("Both", "differ"),
+                    "tab_parser_check")
+    else:
+        out = [[lab[r.set], str(r.n), f"{r.agree:.3f}", f"{r.llm_ambiguous:.3f}"]
+               for r in tt.itertuples()]
+        latex_table(pd.DataFrame(out), ">{\\raggedright\\arraybackslash}p{3.9cm}rrr",
+                    "Set & $n$ & Agree & " + hd("Checker:", "ambiguous"), "tab_parser_check")
+    x = t.set_index("set")
+    num("pcN", f"{len(d):,}", "{}")
+    num("pcAgreeSample", pct(x.loc["stratified_sample", "agree"], 1), "{}")
+    num("pcNSample", str(int(x.loc["stratified_sample", "n"])), "{}")
+    num("pcAgreeFlag", pct(x.loc["flagged", "agree"], 1), "{}")
+    num("pcNFlag", str(int(x.loc["flagged", "n"])), "{}")
+    num("pcAgreeNA", pct(x.loc["non_answer_other", "agree"], 1), "{}")
+    num("pcNNA", str(int(x.loc["non_answer_other", "n"])), "{}")
+    num("pcAgreeAck", pct(x.loc["non_answer_ack", "agree"], 0), "{}")
+    dis = d[~d.agree & (d.llm != "error")]
+    num("pcDisagree", str(len(dis)), "{}")
+    num("pcErrors", str(int((d.llm == "error").sum())), "{}")
+    num("pcNAWithOption", str(int(((d.set == "non_answer_other") & d.llm.isin(list(LET))).sum())), "{}")
+    num("pcFlagAmbig", str(int(((d.set == "flagged") & (d.llm == "ambiguous")).sum())), "{}")
+    num("pcSampleDis", str(int(((d.set == "stratified_sample") & ~d.agree).sum())), "{}")
+    mx, nres = _rescore_change(main, dis.set_index("record_id").llm)
+    num("pcMaxChange", f"{100 * mx:.2f}", "{}")
+    num("pcNRescored", str(nres), "{}")
+    if two:
+        num("pcAgreeSampleB", pct(x.loc["stratified_sample", "agree2"], 1), "{}")
+        num("pcAgreeFlagB", pct(x.loc["flagged", "agree2"], 1), "{}")
+        num("pcCheckersSample", pct(x.loc["stratified_sample", "checkers_agree"], 1), "{}")
+        num("pcCheckersAll", pct(d.checkers_agree.mean(), 1), "{}")
+        num("pcErrorsB", str(int((d.llm2 == "error").sum())), "{}")
+        num("pcNAWithOptionB", str(int(((d.set == "non_answer_other")
+                                        & d.llm2.isin(list(LET))).sum())), "{}")
+        num("pcFlagAmbigB", str(int(((d.set == "flagged") & (d.llm2 == "ambiguous")).sum())), "{}")
+        cons = d[d.consensus_against]
+        num("pcConsensus", str(len(cons)), "{}")
+        for st_, key in (("stratified_sample", "Sample"), ("flagged", "Flag"),
+                         ("non_answer_other", "NA"), ("non_answer_ack", "Ack")):
+            num(f"pcConsensus{key}", str(int((cons.set == st_).sum())), "{}")
+        num("pcConsensusNAOpt", str(int(((cons.set == "non_answer_other")
+                                          & cons.llm.isin(list(LET))).sum())), "{}")
+        dis2 = d[~d.agree2 & (d.llm2 != "error")]
+        mx2, _ = _rescore_change(main, dis2.set_index("record_id").llm2)
+        num("pcMaxChangeB", f"{100 * mx2:.2f}", "{}")
+        mxc, nc = _rescore_change(main, cons.set_index("record_id").llm)
+        num("pcMaxChangeCons", f"{100 * mxc:.2f}", "{}")
+        num("pcNRescoredCons", str(nc), "{}")
     return d
 
 

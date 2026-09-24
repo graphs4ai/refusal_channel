@@ -162,8 +162,27 @@
   "wallclock_seconds": 3274,
   "parser_check": {
    "script": "scripts/21_parser_check.py",
-   "checker": "gpt-oss:20b via Ollama",
-   "records": 901
+   "records": 901,
+   "checkers": [
+    {
+     "model": "gpt-oss:20b",
+     "server": "Ollama",
+     "think": "low",
+     "temperature": 0,
+     "seed": 0
+    },
+    {
+     "model": "phi4:14b",
+     "developer": "Microsoft",
+     "server": "Ollama 0.20.2",
+     "think": null,
+     "temperature": 0,
+     "seed": 0,
+     "num_ctx": 4096,
+     "selection": "fastest candidate with highest agreement with gpt-oss on 60 outputs (15 sample, 25 flagged, 20 non-answers); candidates phi4:14b, granite3.3:8b, exaone3.5:7.8b, command-r7b; see results/parser_check_candidates.csv",
+     "abandoned": "glm-4.7-flash (thinking on) stopped after 367/901 outputs: ~5 s per sample output but up to 300 s per flagged output"
+    }
+   ]
   }
  }
 }
