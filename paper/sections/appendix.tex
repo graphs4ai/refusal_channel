@@ -203,7 +203,7 @@ affected only throughput planning. (1) A prefill-length counter returned the
 number of keys of a tokenizer output instead of a sequence length. (2) The
 first parser version missed the form ``The answer is C'', which inflated
 Mistral-7B's non-answer rate about fivefold; all records were re-parsed with
-the current parser. (3) The templates of Mistral-7B and Gemma-2 reject
+the current parser. (3) The templates of Mistral-7B and Gemma-2-9B reject
 consecutive user turns, so the first build of the no-assistant-turn variant
 produced template errors for them; the variant was rebuilt by merging the
 turns, and failed generations are no longer treated as cached results. For
@@ -246,7 +246,7 @@ both signals and both suggestions (400 records). ``0'': no events.}
 build and the validated build. option: the turn contains an
 ``\texttt{Answer: X}'' reply; empty: no text; template: the turn contains
 chat-template sequences. The empty turns of the validated build are the model
-ending its turn at once (Gemma-2 after every verification message, Mistral-7B
+ending its turn at once (Gemma-2-9B after every verification message, Mistral-7B
 mainly after verification messages).}
 \label{tab:selfgen}
 \end{table*}

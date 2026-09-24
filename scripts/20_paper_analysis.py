@@ -1685,8 +1685,8 @@ def sec_parser_check(main, chk):
            "non_answer_ack": "Bare-acknowledgement non-answers (random)"}
     out = [[lab[r.set], str(r.n), f"{r.agree:.3f}", f"{r.llm_ambiguous:.3f}"]
            for r in t.set_index("set").loc[list(lab)].reset_index().itertuples()]
-    latex_table(pd.DataFrame(out), "lrrr",
-                "Set & $n$ & Agreement & Ambiguous (checker)", "tab_parser_check")
+    latex_table(pd.DataFrame(out), ">{\\raggedright\\arraybackslash}p{3.9cm}rrr",
+                "Set & $n$ & Agree & " + hd("Checker:", "ambiguous"), "tab_parser_check")
     x = t.set_index("set")
     num("pcN", f"{len(d):,}", "{}")
     num("pcAgreeSample", pct(x.loc["stratified_sample", "agree"], 1), "{}")
