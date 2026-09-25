@@ -1,4 +1,4 @@
-"""13 — additional generations requested during revision (one model per call).
+"""13 — matched control, first self-generated history and truncation re-runs (one model per call).
 
 E1  matched no-pressure control. For every (probe, history, replicate) of the
     pressure arm, the same calibration dialogue (none / filler / 3/3 / 0/3),
@@ -6,7 +6,7 @@ E1  matched no-pressure control. For every (probe, history, replicate) of the
     assertion. Because 3/3, 0/3 and filler histories do not depend on the
     calibration rotation, one control record is exactly matched to all four
     pressured cells (2 positions x 2 signals) of the same probe/history/rep.
-    Output: out/rev_e1_<alias>.csv
+    Output: out/aux1_e1_<alias>.csv
 
 E2  self-generated history ("v4_selfgen") on the robustness grid (first 100
     probes, replicate 0, the same 1,600 records per model as script 11). The
@@ -14,14 +14,14 @@ E2  self-generated history ("v4_selfgen") on the robustness grid (first 100
     model's own greedy reply to the preceding user / verification turn; the
     generated history is then fixed and the probe is answered once. User turns,
     verification turns, system prompt and probe are unchanged.
-    Output: out/rev_e2_<alias>.csv (includes the generated assistant turns)
+    Output: out/aux1_e2_<alias>.csv (includes the generated assistant turns)
 
 E3  (a) regenerates robustness-arm rows whose only cached attempt failed
         (v2_no_ack, history=none, Gemma-2 and Mistral);
     (b) re-runs every main-arm and robustness-arm record whose response was cut
         at the 64-token cap AND yielded no parsable option, with a 256-token
         cap, to separate truncation from non-answers.
-    Output: out/rev_e3_trunc_<alias>.csv
+    Output: out/aux1_e3_trunc_<alias>.csv
 """
 import argparse, json, time
 import pandas as pd
@@ -114,11 +114,11 @@ if "e1" in EXPS:
     ctl["asserted_letter"] = ""
     ctl["cell_id"] = ctl["history"] + "|none|na|na"
     jobs, _ = C.build_jobs(ctl, probes, cal)
-    cache = R.Cache(f"{CD}/rev_e1_{alias}.sqlite")
+    cache = R.Cache(f"{CD}/aux1_e1_{alias}.sqlite")
     n, m = run(jobs, cache)
     df = export(jobs, cache)
     df = df.merge(ctl[KEYS + ["matched_record_id"]], on="record_id", how="left")
-    df.to_csv(f"{CD}/rev_e1_{alias}.csv", index=False)
+    df.to_csv(f"{CD}/aux1_e1_{alias}.csv", index=False)
     summary["e1"] = {"records": n, "generated": m, "errors": int(df.error.notna().sum()),
                      "minutes": round((time.time() - t0) / 60, 2)}
 
@@ -129,7 +129,7 @@ if "e2" in EXPS:
     items = sorted(d.item_id.unique())[:a.n_items_robust]
     d = d[d.item_id.isin(items)]
     base_jobs, _ = C.build_jobs(d, probes, cal)
-    cache = R.Cache(f"{CD}/rev_e2_{alias}.sqlite")
+    cache = R.Cache(f"{CD}/aux1_e2_{alias}.sqlite")
     # current conversation for every record; assistant turns filled in order
     conv = {j["record_id"]: [dict(m) for m in j["messages"]] for j in base_jobs}
     asst_pos = {rid: [i for i, m in enumerate(ms) if m["role"] == "assistant"]
@@ -167,7 +167,7 @@ if "e2" in EXPS:
     df["base_record_id"] = df.record_id.str.rsplit("__", n=1).str[0]
     df = df.merge(d[KEYS].rename(columns={"record_id": "base_record_id"}),
                   on="base_record_id", how="left")
-    df.to_csv(f"{CD}/rev_e2_{alias}.csv", index=False)
+    df.to_csv(f"{CD}/aux1_e2_{alias}.csv", index=False)
     summary["e2"] = {"records": len(jobs), "history_turns_generated": n_step_gen,
                      "probe_generated": m, "errors": int(df.error.notna().sum()),
                      "minutes": round((time.time() - t0) / 60, 2)}
@@ -206,12 +206,12 @@ if "e3" in EXPS:
                     and E.parse_answer(got["text"])[0] is None:
                 targets.append((src_name, j, got["text"]))
     P256 = {"temperature": 0.0, "max_tokens": a.trunc_max_tokens}
-    tcache = R.Cache(f"{CD}/rev_e3_trunc_{alias}.sqlite")
+    tcache = R.Cache(f"{CD}/aux1_e3_trunc_{alias}.sqlite")
     tjobs = [j for _, j, _ in targets]
     _, m = run(tjobs, tcache, params=P256)
     extra = {j["record_id"]: {"source": s, "text_64": t} for s, j, t in targets}
     df = export(tjobs, tcache, params=P256, extra=extra) if tjobs else pd.DataFrame()
-    df.to_csv(f"{CD}/rev_e3_trunc_{alias}.csv", index=False)
+    df.to_csv(f"{CD}/aux1_e3_trunc_{alias}.csv", index=False)
     summary["e3"] = {"robustness_refilled": n_refill, "cache_rows_found": found, "truncated_targets": len(tjobs),
                      "regenerated": m,
                      "parsed_after_rerun": int(df.answer.notna().sum()) if len(df) else 0,

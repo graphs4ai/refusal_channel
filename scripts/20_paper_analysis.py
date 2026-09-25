@@ -65,7 +65,7 @@ MODELS = [  # panel order used in every table: release date, then name
     ("Qwen/Qwen2.5-14B-Instruct-AWQ", "Qwen2.5-14B-AWQ", "2024-09"),
     ("Qwen/Qwen3-8B", "Qwen3-8B", "2025-04"),
     ("allenai/Olmo-3-7B-Instruct", "Olmo-3-7B", "2025-11"),
-    ("google/gemma-4-E4B-it", "Gemma-4-E4B", "2026-03"),
+    ("google/gemma-4-E4B-it", "Gemma-4-E4B", "2026-04"),
 ]
 SHORT = {m: s for m, s, _ in MODELS}
 MORDER = [m for m, _, _ in MODELS]
@@ -1307,7 +1307,7 @@ def sec_manifest(main, rob, ctl, tr, genlog, wc=None):
                 + v4h + tot.control_e1 + ntr + tot.robust_v7 + tot.wording_v8)
     num("nRobustVSeven", f"{int(tot.robust_v7):,}", "{}")
     num("nWordingVEight", f"{int(tot.wording_v8):,}", "{}")
-    num("nRoundFour", f"{int(tot.robust_v7 + tot.wording_v8):,}", "{}")
+    num("nAuxThree", f"{int(tot.robust_v7 + tot.wording_v8):,}", "{}")
     num("nGenerationsTotal", f"{total:,}", "{}")
     num("nTruncRerunAll", f"{ntr:,}", "{}")
     arms = [("pressure", "Pressure arm"), ("shared", "Shared reference arm"),
@@ -1332,7 +1332,7 @@ def sec_manifest(main, rob, ctl, tr, genlog, wc=None):
     return t
 
 
-# ============================================================ fourth-round analyses
+# ============================================================ auxiliary analyses
 def sec_history_main_table(p1, rob):
     """Main-text Table 2: history contrast (0/3 - 3/3) on an incorrect
     suggestion. Original scaffold, bare assertion, three scorings plus the
@@ -1613,16 +1613,26 @@ def sec_challenge_prefill(main, B):
     """Reconstructs the letter prefilled before the "Are you sure?" challenge
     (sycodef.collect.baseline_letters_from_cache): the most frequent parsed
     answer among all no-pressure neutral-probe records of the same model,
-    probe and option order (base order: greedy variants 0 and 2 plus three
-    T=0.7 samples; rotated order: greedy variant 1 only), written as the
-    letter of that option order. Compared with B in the canonical frame."""
+    probe and option order, written as the letter of that option order. The
+    greedy variants r=0,1,2 use option order (k+r) mod 2, so r=0 and r=2
+    share one order and r=1 has the other; the three T=0.7 samples always use
+    the base order. Ties go to the answer that occurs first in design order
+    (lower r first, greedy before samples), which is what pandas'
+    value_counts().idxmax() returns in the collection environment."""
     base = main[(main.pressure == "none") & (main.history == "none") & main.answer.notna()]
-    g = base.groupby(["model", "item_id", "option_order"]).answer
-    vc = g.value_counts()
-    top = vc.groupby(level=[0, 1, 2]).transform("max")
-    n_top = (vc == top).groupby(level=[0, 1, 2]).sum()
-    M = g.agg(lambda s_: s_.value_counts().idxmax()).rename("M").reset_index()
-    M["tie"] = n_top.values > 1
+    base = base.sort_values(["model", "item_id", "option_order", "rep"])
+    global KIDX
+    KIDX = {iid: k for k, iid in enumerate(pd.read_csv(DATA / "items_probes.csv").item_id)}
+    rows = []
+    for (m, it, oo), g in base.groupby(["model", "item_id", "option_order"], sort=False):
+        cnt = g.answer.value_counts()
+        top = cnt[cnt == cnt.max()].index
+        first = g[g.answer.isin(top)].iloc[0].answer
+        rows.append({"model": m, "item_id": it, "option_order": int(oo), "M": first,
+                     "tie": len(top) > 1, "n_answers": len(g),
+                     # order of variant r=1 is (k+1) mod 2 (design.py)
+                     "group": "r1" if int(oo) == (KIDX[it] + 1) % 2 else "r02"})
+    M = pd.DataFrame(rows)
     M["Mc"] = [canon(a, o) for a, o in zip(M.M, M.option_order)]
     keys = main[main.pressure == "doubt"][["model", "item_id", "option_order"]].drop_duplicates()
     assert len(keys.merge(M, how="left").query("M != M")) == 0
@@ -1633,9 +1643,13 @@ def sec_challenge_prefill(main, B):
     num("pfTie", pct(M.tie.mean(), 1), "{}")
     num("pfMatchB", pct((xb.Mc == xb.B).mean(), 1), "{}")
     num("pfNoB", pct(x.B.isna().mean(), 1), "{}")
+    for grp, key in (("r02", "ZeroTwo"), ("r1", "One")):
+        xg = xb[xb.group == grp]
+        num(f"pfMatchB{key}", pct((xg.Mc == xg.B).mean(), 1), "{}")
+    return x
 
 
-def sec_shared_arm(main, B):
+def sec_shared_arm(main, B, M=None):
     """No-pressure arm conditions other than the neutral probe (greedy):
     accuracy, non-answers, answer changes relative to B."""
     sh = main[(main.arm == "shared") & (main.decode == "greedy")].merge(
@@ -1653,17 +1667,29 @@ def sec_shared_arm(main, B):
             rec.update({f"acc_{pz}": gg.correct.mean(), f"na_{pz}": (~gg.parsed).mean(),
                         f"flip_{pz}": (ok.canon_answer != ok.B).mean(),
                         f"c2w_{pz}": (~bc.correct).mean()})
+            if pz == "doubt" and M is not None:
+                dm = gg.merge(M[["model", "item_id", "option_order", "Mc", "B"]].rename(
+                    columns={"B": "B_"}), on=["model", "item_id", "option_order"], how="left")
+                dm = dm[dm.canon_answer.notna()]
+                rec["from_M"] = float((dm.canon_answer != dm.Mc).mean())
+                same = dm[dm.B_.notna() & (dm.Mc == dm.B_)]
+                rec["flip_doubt_MB"] = float((same.canon_answer != same.B_).mean())
+                rec["n_doubt_MB"] = len(same)
         rows.append(rec)
     t = pd.DataFrame(rows)
     t.to_csv(RES / "shared_arm.csv", index=False)
-    out = [[SHORT[r.model]] + [f"{getattr(r, c):.3f}" for c in
-                               ("acc_none", "flip_none", "acc_reformulation", "flip_reformulation",
-                                "acc_doubt", "flip_doubt", "c2w_doubt")] for r in t.itertuples()]
-    latex_table(pd.DataFrame(out), "lrrrrrrr",
+    cols = ["acc_none", "flip_none", "acc_reformulation", "flip_reformulation",
+            "acc_doubt", "flip_doubt", "c2w_doubt"] + (["from_M", "flip_doubt_MB"] if "from_M" in t else [])
+    out = [[SHORT[r.model]] + [f"{getattr(r, c):.3f}" for c in cols] for r in t.itertuples()]
+    k = len(cols) - 4
+    latex_table(pd.DataFrame(out), "l" + "r" * len(cols),
                 "& \\multicolumn{2}{c}{Neutral probe ($r{=}1$)} & \\multicolumn{2}{c}{Reformulation} & "
-                "\\multicolumn{3}{c}{``Are you sure?''} \\\\ \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}"
-                "\\cmidrule(l){6-8} Model & Acc. & Flip & Acc. & Flip & Acc. & Flip & "
-                "Correct$\\to$wrong", "tab_shared")
+                f"\\multicolumn{{{k}}}{{c}}{{``Are you sure?''}} \\\\ \\cmidrule(lr){{2-3}}\\cmidrule(lr){{4-5}}"
+                f"\\cmidrule(l){{6-{5 + k}}} Model & Acc. & Flip & Acc. & Flip & Acc. & Flip & "
+                + hd("Correct", "$\\to$wrong") + ("& " + hd("From", "$M$") + " & " + hd("Flip,", "$M{=}B$")
+                                                     if k > 3 else ""), "tab_shared")
+    if "from_M" in t:
+        num("fromMMin", pct(t.from_M.min(), 1), "{}"); num("fromMMax", pct(t.from_M.max(), 1), "{}")
     num("doubtFlipMin", pct(t.flip_doubt.min(), 0), "{}"); num("doubtFlipMax", pct(t.flip_doubt.max(), 0), "{}")
     num("reformFlipMin", pct(t.flip_reformulation.min(), 0), "{}")
     num("reformFlipMax", pct(t.flip_reformulation.max(), 0), "{}")
@@ -1865,7 +1891,8 @@ def sec_parser_check(main, chk):
         mxc, nc, ns3, nc3 = _rescore_change(main, cons.set_index("record_id").llm)
         num("pcSignChangeCons", str(ns3), "{}"); num("pcSigChangeCons", str(nc3), "{}")
         num("pcSignChangeAll", str(ns1 + ns2 + ns3), "{}"); num("pcSigChangeAll", str(nc1 + nc2 + nc3), "{}")
-        num("pcChangeModels", ", ".join(sorted(RESCORE_MODELS)) or "none", "{}")
+        num("pcChangeModels", ", ".join(sorted(x.replace("-v0.3", "") for x in RESCORE_MODELS))
+            or "none", "{}")
         num("pcChangeMaxAbs", f"{100 * RESCORE_MAXABS:.1f}", "{}")
         num("pcMaxChangeCons", f"{100 * mxc:.2f}", "{}")
         num("pcNRescoredCons", str(nc), "{}")
@@ -1967,23 +1994,26 @@ def fig_robust(rates, refusing):
 
 
 def fig_null(t):
+    """Figure 4 (appendix, two-column float at \\textwidth): labels 9 pt."""
     import matplotlib.pyplot as plt
     style()
+    plt.rcParams.update({"font.size": 9, "xtick.labelsize": 9, "ytick.labelsize": 9,
+                         "axes.labelsize": 9, "legend.fontsize": 9})
     t = t.sort_values("excess_flip").reset_index(drop=True)
-    plt.rcParams.update({"font.size": 8.5, "xtick.labelsize": 8, "ytick.labelsize": 8.5,
-                         "axes.labelsize": 8.5})
-    fig, ax = plt.subplots(figsize=(3.1, 3.0))
+    fig, ax = plt.subplots(figsize=(6.3, 3.0))
     y = np.arange(len(t))
-    ax.hlines(y, t.matched_null, t.raw_flip, color="#cccccc", lw=0.8)
-    ax.plot(t.raw_flip, y, "o", ms=3.5, color="#C44E52", label="raw flip rate")
-    ax.plot(t.matched_null, y, "o", ms=3.5, mfc="white", color="#555555",
-            label="matched no-pressure control")
+    ax.hlines(y, t.matched_null, t.raw_flip, color="#cccccc", lw=1.0)
+    ax.plot(t.raw_flip, y, "o", ms=5.5, color="#C44E52", label="Pressured")
+    ax.plot(t.matched_null, y, "o", ms=5.5, mfc="white", mew=1.2, color="#555555",
+            label="Matched control")
     ax.errorbar(t.excess_flip, y, xerr=[t.excess_flip - t.excess_lo, t.excess_hi - t.excess_flip],
-                fmt="s", ms=3, color="#4C72B0", lw=0.8, capsize=1.5,
-                label="difference [95% CI]")
+                fmt="s", ms=4.5, color="#4C72B0", lw=1.1, capsize=2.5,
+                label="Difference (95% CI)")
     ax.set_yticks(y); ax.set_yticklabels([SHORT[m] for m in t.model])
-    ax.set_xlim(0, 1); ax.set_xlabel("share of pairs whose answer differs from $B$")
-    ax.legend(loc="lower left", bbox_to_anchor=(-0.02, 1.0), ncol=2, fontsize=7.5, handletextpad=0.3, columnspacing=0.8)
+    ax.set_xlim(0, 1); ax.set_xticks(np.linspace(0, 1, 6))
+    ax.grid(axis="x", color="#e5e5e5", lw=0.5); ax.set_axisbelow(True)
+    ax.set_xlabel("flip rate or paired difference (proportion of pairs)")
+    ax.legend(loc="lower right", ncol=1, frameon=False)
     fig.tight_layout()
     fig.savefig(FIG / "fig_null.pdf"); fig.savefig(FIG / "fig_null.png", dpi=200)
     plt.close(fig)
@@ -2011,7 +2041,8 @@ def main():
     n_pairs = main_df.model.nunique() * main_df[main_df.arm == "shared"].item_id.nunique()
     num("pctBaselineStable", pct(B.B.notna().sum() / n_pairs, 1), "{}")
     num("nBaselinePairs", f"{n_pairs:,}", "{}")
-    sec_challenge_prefill(main_df, B)
+    global PREFILL
+    PREFILL = sec_challenge_prefill(main_df, B)
     sec_items(probes, cal, cmap, main_df)
     sec_models(main_df, B, rob, meta.get("throughput", {}), meta.get("revisions", {}))
     sec_nonanswer(main_df, probes)
@@ -2059,13 +2090,13 @@ def main():
     wc_path = DATA / "wording_control_records.csv.gz"
     wc = prep(pd.read_csv(wc_path, dtype={"asserted_letter": str}), tl) if wc_path.exists() else None
     sec_manifest(main_df, rob, ctl, tr, meta, wc)
-    # fourth-round analyses
+    # auxiliary analyses
     sec_history_main_table(p1, rob)
     sec_variant_transitions(rob, B)
     sec_pattern(p1)
     sec_selfgen_content(rob, cal, cmap)
     sec_subsets(p1, probes)
-    sec_shared_arm(main_df, B)
+    sec_shared_arm(main_df, B, PREFILL)
     if ctl is not None:
         sec_control_did(p1c)
     if wc is not None:

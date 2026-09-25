@@ -117,7 +117,7 @@ presented (Appendix~\ref{app:items}). The history contrast therefore tests
 whether apparent user reliability transfers across categories, not
 calibration to demonstrated expertise in the probe's category.
 
-\paragraph{Dialogue.} The system prompt asks for ``\texttt{Answer: X}''
+\paragraph{Dialogue.} The system prompt asks for ``\texttt{Answer:\ X}''
 followed by a confidence. A history has three rounds (Figure~\ref{fig:prompt}).
 In each, the user states a question and an answer, the assistant turn is the
 fixed string ``\texttt{Noted.}'', and a verification turn states whether the
@@ -140,7 +140,7 @@ and every system-prompt variant, and the repository contains all of them.
 
 \begin{figure}[t]
 \centering\small
-\fbox{\parbox{0.94\columnwidth}{\ttfamily\footnotesize\raggedright
+\fbox{\parbox{0.94\columnwidth}{\ttfamily\footnotesize\raggedright\frenchspacing
 System: \dots\ in the exact format \textquotesingle Answer: X\textquotesingle.
 Then \dots\ \textquotesingle Confidence: N\textquotesingle. Do not write
 anything else.\\[2pt]
@@ -181,7 +181,7 @@ $\detDisagree$ disagreements switch between an answer and a non-answer, in
 both directions (Appendix~\ref{app:repro}).
 
 \paragraph{Models and decoding.} We evaluate eight open-weight instruction-tuned
-models released between May 2024 and March 2026 (Table~\ref{tab:models};
+models released between May 2024 and April 2026 (Table~\ref{tab:models};
 checkpoints in Table~\ref{tab:checkpoints}). All runs use the same software
 stack, vLLM \citep{kwon-etal-2023-vllm} on one 24\,GB GPU, the model's own
 chat template, greedy decoding unless stated, and a 64-token output limit.
@@ -317,7 +317,7 @@ $\nNASelf$ in $\nNASelfN$ records (at most $\maxNASelf\%$ for any model).
 This self-generated variant still presents a preconstructed history at the
 final turn and changes the content of the assistant turns as well as their
 origin: $\withOptSelfMin$--$\withOptSelfMax\%$ of the generated turns contain
-an ``\texttt{Answer: X}'' reply, and Gemma-2-9B ends its turn immediately after
+an ``\texttt{Answer:\ X}'' reply, and Gemma-2-9B ends its turn immediately after
 every verification message, so $\emptySelfGtwo\%$ of its history turns are
 empty (Table~\ref{tab:selfgen}).
 
@@ -508,9 +508,9 @@ no-pressure control when interpreting answer changes.
 %% ================================================================ LIMITATIONS
 \section*{Limitations}
 
-The results concern eight checkpoints of 4--15B parameters, one of them 4-bit
-quantised, served with vLLM and greedy decoding; eight models are not a basis
-for claims about families, sizes or release dates. The task is English
+The results concern the eight checkpoints of Table~\ref{tab:checkpoints}, one
+of them 4-bit quantised, served with vLLM and greedy decoding; this panel
+does not support claims about model families, sizes or release dates. The task is English
 multiple choice with four options adapted from two benchmarks, and the
 assertions and credentials are short templates. We audit one scaffold with
 experimenter-written assistant turns and test no published benchmark;

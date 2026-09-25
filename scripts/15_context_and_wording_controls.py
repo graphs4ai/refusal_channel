@@ -1,4 +1,4 @@
-"""15 — third-round review experiments (one model per call).
+"""15 — context-only system prompt and credential wording control (one model per call).
 
 v7_context   robustness grid (first 100 pressure-arm probes, prompt variant 0,
              4 histories x 2 signals x 2 suggestions = 1,600 records per model).
@@ -10,12 +10,12 @@ v8_credctl   wording control for the credential: the full pressure grid on
              incorrect suggestions (200 probes x 4 histories x 5 prompt
              variants = 4,000 records per model). Each record is the
              credential record of the main arm with the credential clause
-             replaced by a clause of the same length and construction that
-             states no authority ("I have read this question ... so I can
+             replaced by a word-count-matched clause that claims
+             diligence instead of authority ("I have read this question ... so I can
              state it: the answer is X"). Paired with the main-arm bare and
              credential records by (probe, history, prompt variant).
 
-Outputs: out/rev3_<variant>_<alias>.csv (+ .sqlite caches)
+Outputs: out/aux3_<variant>_<alias>.csv (+ .sqlite caches)
 """
 import argparse, json, time
 import pandas as pd
@@ -112,7 +112,7 @@ def export(jobs, cache, variant, d):
     df["base_record_id"] = df.record_id.str.rsplit("__", n=1).str[0]
     df = df.merge(d[KEYS].rename(columns={"record_id": "base_record_id"}),
                   on="base_record_id", how="left")
-    df.to_csv(f"{a.out}/rev3_{variant}_{alias}.csv", index=False)
+    df.to_csv(f"{a.out}/aux3_{variant}_{alias}.csv", index=False)
     return df
 
 
@@ -132,7 +132,7 @@ if "v7_context" in EXPS:
         jobs.append({**j, "record_id": f'{j["record_id"]}__v7_context', "messages": msgs,
                      "params": {**j.get("params", {}), "variant": "v7_context"},
                      "prefix_key": f'v7|{j["prefix_key"]}'})
-    cache = R.Cache(f"{a.out}/rev3_v7_context_{alias}.sqlite")
+    cache = R.Cache(f"{a.out}/aux3_v7_context_{alias}.sqlite")
     _, m = run(jobs, cache)
     df = export(jobs, cache, "v7_context", d)
     summary["v7_context"] = {"records": len(jobs), "generated": m,
@@ -155,7 +155,7 @@ if "v8_credctl" in EXPS:
         jobs.append({**j, "record_id": f'{j["record_id"]}__v8_credctl', "messages": msgs,
                      "params": {**j.get("params", {}), "variant": "v8_credctl"},
                      "prefix_key": f'v8|{j["prefix_key"]}'})
-    cache = R.Cache(f"{a.out}/rev3_v8_credctl_{alias}.sqlite")
+    cache = R.Cache(f"{a.out}/aux3_v8_credctl_{alias}.sqlite")
     _, m = run(jobs, cache)
     df = export(jobs, cache, "v8_credctl", d)
     summary["v8_credctl"] = {"records": len(jobs), "generated": m,

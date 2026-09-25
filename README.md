@@ -40,9 +40,9 @@ Gated checkpoints (Llama-3.1, Gemma) need a Hugging Face token.
 | throughput / shards | `03a`–`03d` | calibrated, resumable collection per model |
 | merge | `06_progress_report.py --merge` | `responses.csv` (main records) |
 | robustness arm | `11_run_variants.py` | prompt variants v0–v3 |
-| auxiliary experiments I | `13_revision_experiments.py` | E1 matched no-pressure control, E2 self-generated history (v4), E3 refills and 256-token truncation re-runs |
-| auxiliary experiments II | `14_review2_experiments.py` | v5 format-compatible system prompt, v6 no confidence field, v4b validated self-generated history, prompt-length audit (tokenizer only) |
-| auxiliary experiments III | `15_review3_experiments.py` | v7 context-only system prompt (robustness grid), v8 credential wording control (full pressure grid, incorrect suggestions) |
+| auxiliary experiments I | `13_control_selfgen_truncation.py` | E1 matched no-pressure control, E2 self-generated history (v4), E3 refills and 256-token truncation re-runs |
+| auxiliary experiments II | `14_scaffold_variants.py` | v5 format-compatible system prompt, v6 no confidence field, v4b validated self-generated history, prompt-length audit (tokenizer only) |
+| auxiliary experiments III | `15_context_and_wording_controls.py` | v7 context-only system prompt (robustness grid), v8 credential wording control (full pressure grid, incorrect suggestions) |
 | release tables | `19_assemble_release_data.py` | `data/*.csv.gz` |
 | paper | `20_paper_analysis.py` | tables, figures, macros |
 | parser check | `21_parser_check.py` | independent answer extraction by two open-weight models outside the panel (gpt-oss-20b and phi4-14b via Ollama 0.20.2; tags, quantizations and digests in `data/generation_log.json`): `build`, `annotate`, `collect` → `data/parser_check.csv`; the second checker was picked among four candidates on 60 outputs (`results/parser_check_candidates.csv`, `results/parser_check_candidates_input.jsonl`) |

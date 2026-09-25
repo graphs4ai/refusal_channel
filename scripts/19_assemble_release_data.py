@@ -5,13 +5,13 @@ Inputs (all under --out):
   responses_<alias>.sqlite       caches (only used for the finish reason); or
   --finish-csv                   an export with columns record_id, finish
   variants_<alias>.csv           robustness arm, current prompt versions (script 11)
-  rev_e1_<alias>.csv             matched no-pressure control (script 13, E1)
-  rev_e2_<alias>.csv             self-generated history variant (script 13, E2)
-  rev_e3_trunc_<alias>.csv       truncated non-answers re-run at 256 tokens (E3)
-  rev2_<variant>_<alias>.csv     v5_format, v6_noconf, v4b_selfgen (script 14)
-  rev2_lengths_<alias>.csv[.gz]  prompt-length audit (script 14)
-  rev3_v7_context_<alias>.csv    context-only system prompt (script 15)
-  rev3_v8_credctl_<alias>.csv    credential wording control (script 15)
+  aux1_e1_<alias>.csv             matched no-pressure control (script 13, E1)
+  aux1_e2_<alias>.csv             self-generated history variant (script 13, E2)
+  aux1_e3_trunc_<alias>.csv       truncated non-answers re-run at 256 tokens (E3)
+  aux2_<variant>_<alias>.csv     v5_format, v6_noconf, v4b_selfgen (script 14)
+  aux2_lengths_<alias>.csv[.gz]  prompt-length audit (script 14)
+  aux3_v7_context_<alias>.csv    context-only system prompt (script 15)
+  aux3_v8_credctl_<alias>.csv    credential wording control (script 15)
   item_pool_probes.csv, item_pool_calibration.csv, calibration_map.json
 
 Outputs (under --data):
@@ -71,11 +71,11 @@ for f in sorted(glob.glob(f"{a.out}/variants_*.csv")):
     if "error" in d:
         d = d[d["error"].isna()]
     parts.append(d[[c for c in KEEP if c in d]])
-for f in sorted(glob.glob(f"{a.out}/rev_e2_*.csv")):
+for f in sorted(glob.glob(f"{a.out}/aux1_e2_*.csv")):
     d = pd.read_csv(f, dtype={"asserted_letter": str})
     d = d[d["error"].isna()]
     parts.append(d[[c for c in KEEP + ["generated_history"] if c in d]])
-for f in sorted(glob.glob(f"{a.out}/rev2_v*_*.csv")) + sorted(glob.glob(f"{a.out}/rev3_v7_*.csv")):
+for f in sorted(glob.glob(f"{a.out}/aux2_v*_*.csv")) + sorted(glob.glob(f"{a.out}/aux3_v7_*.csv")):
     d = pd.read_csv(f, dtype={"asserted_letter": str})
     d = d[d["error"].isna()]
     parts.append(d[[c for c in KEEP + ["generated_history"] if c in d]])
@@ -85,7 +85,7 @@ rob.to_csv(f"{a.data}/robustness_records.csv.gz", index=False, compression="gzip
 
 # ---------------------------------------------------------------- E1 control
 parts = [pd.read_csv(f, dtype={"asserted_letter": str})
-         for f in sorted(glob.glob(f"{a.out}/rev_e1_*.csv"))]
+         for f in sorted(glob.glob(f"{a.out}/aux1_e1_*.csv"))]
 n_ctl = 0
 if parts:
     ctl = pd.concat(parts, ignore_index=True)
@@ -98,7 +98,7 @@ if parts:
 
 # ---------------------------------------------------------------- v8 wording control
 parts = [pd.read_csv(f, dtype={"asserted_letter": str})
-         for f in sorted(glob.glob(f"{a.out}/rev3_v8_credctl_*.csv"))]
+         for f in sorted(glob.glob(f"{a.out}/aux3_v8_credctl_*.csv"))]
 n_wc = 0
 if parts:
     wc = pd.concat(parts, ignore_index=True)
@@ -108,7 +108,7 @@ if parts:
     wc.to_csv(f"{a.data}/wording_control_records.csv.gz", index=False, compression="gzip")
 
 # ---------------------------------------------------------------- E3
-parts = [pd.read_csv(f) for f in sorted(glob.glob(f"{a.out}/rev_e3_trunc_*.csv"))
+parts = [pd.read_csv(f) for f in sorted(glob.glob(f"{a.out}/aux1_e3_trunc_*.csv"))
          if os.path.getsize(f) > 5]
 if parts:
     tr = pd.concat(parts, ignore_index=True)
@@ -118,7 +118,7 @@ if parts:
         "parse_rule_256"]].to_csv(f"{a.data}/truncation_rerun.csv", index=False)
 
 # ---------------------------------------------------------------- prompt lengths
-parts = [pd.read_csv(f) for f in sorted(glob.glob(f"{a.out}/rev2_lengths_*.csv*"))]
+parts = [pd.read_csv(f) for f in sorted(glob.glob(f"{a.out}/aux2_lengths_*.csv*"))]
 if parts:
     pl = pd.concat(parts, ignore_index=True)
     pl.to_csv(f"{a.data}/prompt_lengths.csv.gz", index=False, compression="gzip")

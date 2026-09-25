@@ -1,4 +1,4 @@
-"""14 — second-round revision experiments on the robustness grid (one model per call).
+"""14 — further scaffold variants on the robustness grid (one model per call).
 
 All variants use the same 1,600 records per model as script 11 (first 100
 pressure-arm probes, prompt variant 0, 4 histories x 2 signals x 2 suggestions).
@@ -19,7 +19,7 @@ v4b_selfgen  self-generated history rebuilt with explicit turn boundaries: each
 lengths      prompt-length audit (tokenizer only, no generation) for every prompt
              of the main arm, the matched control and all robustness variants.
 
-Outputs: out/rev2_<variant>_<alias>.csv, out/rev2_lengths_<alias>.csv
+Outputs: out/aux2_<variant>_<alias>.csv, out/aux2_lengths_<alias>.csv
 """
 import argparse, json, re, time
 import pandas as pd
@@ -120,7 +120,7 @@ def export(jobs, cache, variant, d, extra=None):
     df["base_record_id"] = df.record_id.str.rsplit("__", n=1).str[0]
     df = df.merge(d[KEYS].rename(columns={"record_id": "base_record_id"}),
                   on="base_record_id", how="left")
-    df.to_csv(f"{a.out}/rev2_{variant}_{alias}.csv", index=False)
+    df.to_csv(f"{a.out}/aux2_{variant}_{alias}.csv", index=False)
     return df
 
 
@@ -141,7 +141,7 @@ for v, sys_txt in (("v5_format", SYSTEM_FORMAT), ("v6_noconf", SYSTEM_NOCONF)):
              "messages": with_system(j["messages"], sys_txt),
              "params": {**j.get("params", {}), "variant": v},
              "prefix_key": f'{v}|{j["prefix_key"]}'} for j in base]
-    cache = R.Cache(f"{a.out}/rev2_{v}_{alias}.sqlite")
+    cache = R.Cache(f"{a.out}/aux2_{v}_{alias}.sqlite")
     _, m = run(jobs, cache)
     df = export(jobs, cache, v, d)
     summary[v] = {"records": len(jobs), "generated": m,
@@ -162,7 +162,7 @@ def clean_turn(t):
 if "v4b_selfgen" in EXPS:
     t0 = time.time()
     d, base = robust_grid()
-    cache = R.Cache(f"{a.out}/rev2_v4b_selfgen_{alias}.sqlite")
+    cache = R.Cache(f"{a.out}/aux2_v4b_selfgen_{alias}.sqlite")
     HIST = {**PARAMS, "stop": TEMPLATE_SEQS, "min_tokens": 1}
     conv = {j["record_id"]: [dict(m) for m in j["messages"]] for j in base}
     asst_pos = {rid: [i for i, m in enumerate(ms) if m["role"] == "assistant"]
@@ -233,8 +233,8 @@ if "lengths" in EXPS:
     for v, sys_txt in (("v5_format", SYSTEM_FORMAT), ("v6_noconf", SYSTEM_NOCONF)):
         rows += [(v, j["record_id"], ntok(with_system(j["messages"], sys_txt)))
                  for j in base]
-    for f, v in ((f"{a.out}/rev_e2_{alias}.csv", "v4_selfgen"),
-                 (f"{a.out}/rev2_v4b_selfgen_{alias}.csv", "v4b_selfgen")):
+    for f, v in ((f"{a.out}/aux1_e2_{alias}.csv", "v4_selfgen"),
+                 (f"{a.out}/aux2_v4b_selfgen_{alias}.csv", "v4b_selfgen")):
         try:
             g = pd.read_csv(f).set_index("base_record_id")["generated_history"]
         except FileNotFoundError:
@@ -250,7 +250,7 @@ if "lengths" in EXPS:
             rows.append((v, j["record_id"], ntok(ms)))
     L = pd.DataFrame(rows, columns=["arm", "record_id", "prompt_tokens"])
     L["model"] = a.model
-    L.to_csv(f"{a.out}/rev2_lengths_{alias}.csv", index=False)
+    L.to_csv(f"{a.out}/aux2_lengths_{alias}.csv", index=False)
     lim = cfg["defaults"]["max_model_len"] - cfg["defaults"]["max_tokens"]
     summary["lengths"] = {"n": len(L), "median": float(L.prompt_tokens.median()),
                           "p95": float(L.prompt_tokens.quantile(0.95)),

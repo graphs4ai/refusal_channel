@@ -45,7 +45,7 @@
   "allenai/Olmo-3-7B-Instruct": 1800,
   "google/gemma-4-E4B-it": 1800
  },
- "revision_run": {
+ "aux_run_1": {
   "date_utc": "2026-09-23",
   "wall_seconds": 4012,
   "minutes_by_model": {
@@ -124,9 +124,9 @@
   "main_pressure_arm": 1.59,
   "main_shared_arm": 0.46,
   "robustness_v0_v3_wallclock": 1.99,
-  "revision_E1_E2_E3_wallclock": 1.11,
+  "aux1_E1_E2_E3_wallclock": 1.11,
   "note": "shard durations include model loading inside each shard run; robustness wall-clock includes the superseded first build of v2_no_ack",
-  "review3_v7_v8_wallclock": 0.91
+  "aux3_v7_v8_wallclock": 0.91
  },
  "v4b_history_turns": {
   "Qwen/Qwen2.5-7B-Instruct": 1800,
@@ -138,7 +138,7 @@
   "allenai/Olmo-3-7B-Instruct": 1800,
   "google/gemma-4-E4B-it": 1800
  },
- "review2_run": {
+ "aux_run_2": {
   "date_utc": "2026-09-23",
   "variants": [
    "v5_format",
@@ -147,13 +147,13 @@
   ],
   "history_turn_decoding": "greedy, max_tokens=64, stop=chat-template control strings, min_tokens=1"
  },
- "review3_run": {
+ "aux_run_3": {
   "date_utc": "2026-09-24",
   "variants": [
    "v7_context",
    "v8_credctl"
   ],
-  "script": "scripts/15_review3_experiments.py",
+  "script": "scripts/15_context_and_wording_controls.py",
   "records": {
    "v7_context": 12800,
    "v8_credctl": 32000

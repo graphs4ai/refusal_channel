@@ -22,7 +22,9 @@ and $\nTruncRerunRob$ robustness-arm truncated non-answers.}
 \begin{table*}[h]
 \centering\small
 \input{generated/tab_checkpoints}
-\caption{Hugging Face checkpoints and revisions used.}
+\caption{Hugging Face checkpoints and revisions used. Gemma-4-E4B has 4.5B
+effective parameters and about 8B including embeddings, according to its
+model card \citep{google-2026-gemma4}.}
 \label{tab:checkpoints}
 \end{table*}
 
@@ -76,7 +78,7 @@ options. Quotation marks are straight ASCII quotes, and every sentence break
 is a single space. Option letters are those of the displayed option order;
 for scoring, $A$, $u$ and $g$ are compared within the same prompt, and
 comparisons with $B$ or across option orders map each letter back to the
-identity of the option (\texttt{canon} in \texttt{scripts/20\_paper\_analysis.py}).
+identity of the option (function \texttt{canon} in \texttt{scripts/20\_paper\_analysis.py}).
 
 {\raggedright\frenchspacing
 \begin{description}[style=unboxed,leftmargin=0pt,font=\normalfont\itshape]
@@ -115,17 +117,22 @@ separates authority from a matched justification, not from no justification.
 the very same question again, unchanged: which of the four options above is
 the correct one?}; challenge: the neutral probe, a prefilled assistant turn
 \texttt{\small Answer: \{M\}}, and \texttt{\small Are you sure? Think again
-and answer once more.} $M$ is the most frequent parsed answer of the same
-model to the neutral probe of the same probe and option order, written as the
-letter of that order: in the base order, over its two greedy variants and
-three $T{=}0.7$ samples; in the rotated order, its single greedy variant
-(\texttt{baseline\_letters\_from\_cache} in \texttt{sycodef/collect.py}).
-Every model--probe--order triple had at least one parsed answer; ties
-($\pfTie\%$ of the $\pfTriples$ triples) are resolved by the order of
-\texttt{pandas} \texttt{value\_counts}. $M$ is not the scoring reference: it
-gives the same option as $B$ in $\pfMatchB\%$ of the triples with a defined
-$B$, and challenge flips are scored against $B$
-(\texttt{results/challenge\_prefill.csv}). The prefilled turn has only the
+and answer once more.} $M$ is the model's most frequent parsed answer to the neutral prompt of the
+same probe in the same option order, written as the letter of that order
+(\texttt{baseline\_letters\_from\_cache} in \texttt{sycodef/collect.py}). The
+greedy variants $r{=}0$ and $r{=}2$ share one option order and $r{=}1$ has the
+other (\S\ref{sec:design}); the three $T{=}0.7$ samples always use the base
+order. $M$ therefore pools the greedy answers in that order and, for the base
+order, the three samples. Every model--probe--order triple had at least one
+parsed answer; ties ($\pfTie\%$ of the $\pfTriples$ triples) go to the answer
+that occurs first in design order (lower $r$ first, greedy before samples).
+$M$ gives the same option as $B$ in $\pfMatchB\%$ of the triples with a
+defined $B$: $\pfMatchBZeroTwo\%$ in the order of $r{=}0$ and $r{=}2$, which
+define $B$, and $\pfMatchBOne\%$ in the order of $r{=}1$
+(\texttt{results/challenge\_prefill.csv}). Flips are scored against $B$, so a
+challenged record that keeps a prefilled $M\neq B$ counts as a flip;
+Table~\ref{tab:shared} therefore also reports departures from $M$ and the
+flip restricted to triples with $M{=}B$. The prefilled turn has only the
 answer line, without the confidence line requested by the system prompt.
 \item[Alternative acknowledgements.] \texttt{\small Understood. / Got it. /
 Okay.} (paraphrase 0 / 1 / 2).
@@ -156,14 +163,15 @@ judge the question ambiguous. Acknowledging the message without giving a
 letter is not a valid answer.}
 \end{description}}
 The exact wording of every template and variant is in
-\texttt{sycodef/prompts.py} and \texttt{sycodef/variants.py} and, in
-\texttt{scripts/}, in \texttt{14\_review2\_experiments.py} and
-\texttt{15\_review3\_experiments.py}.
+\texttt{sycodef/prompts.py} and \texttt{sycodef/variants.py}; the scripts
+that run the variants are
+\texttt{scripts/\allowbreak 14\_scaffold\_\allowbreak variants.py} and
+\texttt{scripts/\allowbreak 15\_context\_\allowbreak and\_\allowbreak wording\_\allowbreak controls.py}.
 
 \section{Parser, non-answers and truncation}
 \label{app:parser}
 
-The parser applies, in order: \texttt{Answer: X}; ``the (correct) answer is
+The parser applies, in order: \texttt{Answer:\ X}; ``the (correct) answer is
 X''; a line containing only a letter; a bold letter; ``option/letter X''. The
 first match is used. Of the $\nParsed$ parsed main-arm outputs,
 $\pctRuleZero\%$ match the first rule. An automatic check flags outputs that
@@ -176,13 +184,13 @@ Table~\ref{tab:taxonomy} classifies every non-answer deterministically; the
 regenerated texts of the truncated ones are in
 \texttt{data/truncation\_rerun.csv}.
 
-\paragraph{Model-based checks.} This establishes syntactic coverage, not
-semantic accuracy. As a further check we gave $\pcN$ distinct outputs to two
-open-weight models outside the evaluated panel and from different developers,
-gpt-oss-20b \citep{openai-2025-gptoss} (Ollama tag \texttt{gpt-oss:20b},
-MXFP4, low reasoning effort) and Phi-4 \citep{abdin-etal-2024-phi4}
-(\texttt{phi4:14b}, Q4\_K\_M), both served by Ollama 0.20.2 at temperature 0
-(model digests in \texttt{data/generation\_log.json}). Phi-4 was chosen among
+\paragraph{Model-based checks.} The rules above establish syntactic
+coverage, not semantic accuracy. As a further check we gave $\pcN$ distinct
+outputs to two open-weight models outside the evaluated panel and from
+different developers, gpt-oss-20b \citep{openai-2025-gptoss} at low reasoning
+effort and Phi-4 \citep{abdin-etal-2024-phi4}, both served by Ollama 0.20.2 at
+temperature 0 as \texttt{gpt-oss:20b} (MXFP4) and \texttt{phi4:14b}
+(Q4\_K\_M); the model digests are in \texttt{data/generation\_log.json}. Phi-4 was chosen among
 four fast candidates as the one agreeing most with gpt-oss-20b on a trial of
 60 outputs (released with the repository), so the two readings are not fully
 independent. Each checker saw the question, the lettered options and the
@@ -284,7 +292,7 @@ both signals and both suggestions (400 records). ``0'': no events.}
 \input{generated/tab_selfgen_audit}
 \caption{Content of the unique self-generated history turns in the first
 build and the validated build. option: the turn contains an
-``\texttt{Answer: X}'' reply; empty: no text; template: the turn contains
+``\texttt{Answer:\ X}'' reply; empty: no text; template: the turn contains
 chat-template sequences. The empty turns of the validated build are the model
 ending its turn at once (Gemma-2-9B after every verification message, Mistral-7B
 mainly after verification messages).}
@@ -459,17 +467,23 @@ and challenge: variants $r{=}0,1,2$, so two of their three variants share
 paraphrase and option order with the prompts that define $B$ and their flips
 are not comparable with the neutral-probe flip. Correct$\to$wrong: share
 not correct among records with $B{=}g$. The challenge follows a prefilled
-answer $M$ (Appendix~\ref{app:prompts}); flips are scored against $B$.}
+answer $M$ (Appendix~\ref{app:prompts}); flips are scored against $B$, so a
+record that keeps a prefilled $M\neq B$ counts as a flip. From $M$: share of
+parsed challenge records whose answer differs from $M$. Flip, $M{=}B$: flip
+restricted to model--probe--order triples in which $M$ and $B$ agree.}
 \label{tab:shared}
 \end{table*}
 
-\begin{figure}[h]
+\begin{figure*}[h]
 \centering
-\includegraphics[width=\columnwidth]{figures/fig_null.pdf}
-\caption{Pressured and matched-control flip rates of Table~\ref{tab:null},
-with their difference and 95\% CI; models sorted by the difference.}
+\includegraphics[width=\textwidth]{figures/fig_null.pdf}
+\caption{Pressured and matched-control flip rates on the same eligible pairs,
+with their paired difference and pointwise 95\% CI (Table~\ref{tab:null}).
+All values are on the proportion scale; models are sorted by the difference.
+There are $\nullPairsMin$--$\nullPairsMax$ eligible pairs per model
+(Table~\ref{tab:null-detail}).}
 \label{fig:null}
-\end{figure}
+\end{figure*}
 
 \section{Credential wording control}
 \label{app:cred}
@@ -497,8 +511,11 @@ contrast (8 models $\times$ the none, 3/3 and 0/3 histories).}
 \centering\small\setlength{\tabcolsep}{3pt}
 \input{generated/tab_credctl_na}
 \caption{Non-answer rate, same records and layout as
-Table~\ref{tab:credctl}; $^{*}$ Holm over 24 tests per contrast. n.e.: no
-non-answers in either condition.}
+Table~\ref{tab:credctl}; $^{*}$ Holm over 24 tests per contrast. n.e.: the
+clustered variance is zero, so no interval is reported. In every such cell
+neither condition has a non-answer, except Olmo-3-7B with no history
+(credential $-$ wording), where each condition has 4 non-answers out of
+1{,}000, all on the same probe; a zero difference does not mean zero events.}
 \label{tab:credctl-na}
 \end{table*}
 
