@@ -169,7 +169,11 @@
      "server": "Ollama",
      "think": "low",
      "temperature": 0,
-     "seed": 0
+     "seed": 0,
+     "ollama_version": "0.20.2",
+     "digest": "17052f91a42e97930aa6e28a6c6c06a983e6a58dbb00434885a0cf5313e376f7",
+     "quantization": "MXFP4",
+     "parameters": "20.9B"
     },
     {
      "model": "phi4:14b",
@@ -180,7 +184,11 @@
      "seed": 0,
      "num_ctx": 4096,
      "selection": "fastest candidate with highest agreement with gpt-oss on 60 outputs (15 sample, 25 flagged, 20 non-answers); candidates phi4:14b, granite3.3:8b, exaone3.5:7.8b, command-r7b; see results/parser_check_candidates.csv",
-     "abandoned": "glm-4.7-flash (thinking on) stopped after 367/901 outputs: ~5 s per sample output but up to 300 s per flagged output"
+     "abandoned": "glm-4.7-flash (thinking on) stopped after 367/901 outputs: ~5 s per sample output but up to 300 s per flagged output",
+     "ollama_version": "0.20.2",
+     "digest": "ac896e5b8b34a1f4efa7b14d7520725140d5512484457fab45d2a4ea14c69dba",
+     "quantization": "Q4_K_M",
+     "parameters": "14.7B"
     }
    ]
   }

@@ -655,6 +655,11 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
                      "excl_non_answer": int((g.B.notna() & (g.canon_answer.isna()
                                                             | g.ctl_canon.isna())).sum()),
                      "n_baseline_correct": len(bg),
+                     "n_harm_pressured": int(bg.endorse.sum()),
+                     "n_harm_control": int(bg.ctl_endorse.sum()),
+                     "n_pair_pressured_only": int(np.sum(p_fl & ~c_fl)),
+                     "n_pair_control_only": int(np.sum(~p_fl & c_fl)),
+                     "n_pair_both": int(np.sum(p_fl & c_fl)),
                      "harm_pressured": float(bg.endorse.mean()),
                      "harm_control": float(bg.ctl_endorse.mean()),
                      "pair_pressured_only": float(np.mean(p_fl & ~c_fl)),
@@ -737,6 +742,20 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
                                           hd("Difference", "[95\\% CI]"), hd("Rank", "raw"),
                                           hd("Rank", "diff."), hd("Form", "null"),
                                           hd("$T{=}0.7$", "null")]), "tab_null", two_row=True)
+    out = []
+    for r in t.itertuples():
+        out.append([SHORT[r.model], f"{r.n_pairs}", f"{r.n_baseline_correct}",
+                    f"{r.harm_pressured:.3f} ({r.n_harm_pressured})",
+                    f"{r.harm_control:.3f} ({r.n_harm_control})",
+                    f"{r.pair_pressured_only:.3f} ({r.n_pair_pressured_only})",
+                    f"{r.pair_control_only:.3f} ({r.n_pair_control_only})",
+                    f"{r.pair_both:.3f} ({r.n_pair_both})"])
+    latex_table(pd.DataFrame(out), "lrrrrrrr",
+                "& & & \\multicolumn{2}{c}{Suggested option, $B{=}g$} & "
+                "\\multicolumn{3}{c}{Differs from $B$} \\\\ \\cmidrule(lr){4-5}\\cmidrule(l){6-8} "
+                "Model & Pairs & " + hd("Pairs", "$B{=}g$") + " & Pressured & Control & "
+                + hd("Pressured", "only") + " & " + hd("Control", "only") + " & Both",
+                "tab_null_detail", two_row=True)
     return t, taus
 
 
@@ -869,7 +888,7 @@ def sec_robust(rob, main):
                      f"{x2['with_option']:.3f}", f"{x2['empty']:.3f}", f"{x2['template_leak']:.3f}"])
     latex_table(pd.DataFrame(rows), "lrrrrrrr",
                 "Model & Unique turns & \\multicolumn{3}{c}{First build} & "
-                "\\multicolumn{3}{c}{Validated build (v4b)} \\\\ & & option & empty & "
+                "\\multicolumn{3}{c}{Validated build} \\\\ & & option & empty & "
                 "template & option & empty & template", "tab_selfgen_audit")
     # determinism: v0 reproduces main-arm replicate 0 with the identical prompt
     v0 = r[r.variant == "v0_baseline"][["base_record_id", "answer"]]
@@ -1116,6 +1135,22 @@ def sec_transitions(p1, B):
                     "\\multicolumn{3}{c}{Correct-to-suggested $P(A{=}u\\mid B{=}g,\\,u{\\neq}g)$} \\\\ "
                     "& 3/3 ($n$) & 0/3 ($n$) & $\\Delta$ [95\\% CI] & 3/3 ($n$) & 0/3 ($n$) & "
                     "$\\Delta$ [95\\% CI]", tname, two_row=True)
+    dn = p1[p1.history == "none"].merge(B, on=["model", "item_id"], how="left")
+    dn = dn[dn.B.notna()]
+    out = []
+    for m in MORDER:
+        row = [SHORT[m]]
+        for s_ in ("bare", "credential"):
+            g = dn[(dn.model == m) & (dn.signal == s_)]
+            rec = g[(g.position == "correct") & (g.B != g.canon_true)]
+            c2u = g[(g.position == "incorrect") & (g.B == g.canon_true)]
+            row += [f"{rec.correct.mean():.3f} ({len(rec)})", f"{c2u.endorse.mean():.3f} ({len(c2u)})"]
+        out.append(row)
+    latex_table(pd.DataFrame(out), "lrrrr",
+                "& \\multicolumn{2}{c}{Bare assertion} & \\multicolumn{2}{c}{Credential} \\\\ "
+                "\\cmidrule(lr){2-3}\\cmidrule(l){4-5} Model & Recovery ($n$) & "
+                "Correct-to-suggested ($n$) & Recovery ($n$) & Correct-to-suggested ($n$)",
+                "tab_transitions_none", two_row=True)
     tb = t[t.signal == "bare"]
     for name, key in (("recovery", "Rec"), ("c2u", "Cu")):
         x = tb[tb.metric == name]
@@ -1329,7 +1364,7 @@ def sec_history_main_table(p1, rob):
                 "\\multicolumn{2}{c}{Without prefilled acknowledgements} \\\\ "
                 "\\cmidrule(lr){2-5}\\cmidrule(l){6-7} "
                 "Model & Non-answer & " + hd("Endorse", "(all)") + " & " + hd("Endorse", "$\\mid$ answered")
-                + " & " + hd("Worst-case", "bounds") + " & " + hd("No assistant", "turns") + " & "
+                + " & " + hd("Completion", "bounds") + " & " + hd("No assistant", "turns") + " & "
                 + hd("Self-", "generated"), "tab_history_scoring", two_row=True)
     b = pd.DataFrame(bounds)
     b.to_csv(RES / "manski_bounds.csv", index=False)
@@ -1376,21 +1411,22 @@ def sec_variant_transitions(rob, B):
     t = pd.DataFrame(rows)
     t = pd.concat([holm(g) for _, g in t.groupby("metric")]).sort_index()
     t.to_csv(RES / "transitions_by_scaffold.csv", index=False)
-    out = []
-    for m in MORDER:
-        row = [SHORT[m]]
-        for name in ("c2u", "recovery"):
+    k = len(vs)
+    num("tvFamily", str(8 * k), "{}")
+    for name, suf, lab in (("c2u", "a", "Correct-to-suggested"), ("recovery", "b", "Recovery")):
+        out = []
+        for m in MORDER:
+            row = [SHORT[m]]
             for v, _ in vs:
                 x = t[(t.model == m) & (t.variant == v) & (t.metric == name)].iloc[0]
-                row.append(fmt_pp(x).split(" [")[0] + ("$^{*}$" if x.p_holm < 0.05 else ""))
-        out.append(row)
-    k = len(vs)
-    latex_table(pd.DataFrame(out), "l" + "r" * (2 * k),
-                f"& \\multicolumn{{{k}}}{{c}}{{Correct-to-suggested}} & "
-                f"\\multicolumn{{{k}}}{{c}}{{Recovery}} \\\\ "
-                f"\\cmidrule(lr){{2-{k + 1}}}\\cmidrule(l){{{k + 2}-{2 * k + 1}}} Model & "
-                + " & ".join(lbl for _, lbl in vs) + " & " + " & ".join(lbl for _, lbl in vs),
-                "tab_transitions_scaffold")
+                row.append(fmt_pp(x))
+            out.append(row)
+        latex_table(pd.DataFrame(out), "l" + "r" * k,
+                    f"& \\multicolumn{{{k}}}{{c}}{{{lab}}} \\\\ \\cmidrule(l){{2-{k + 1}}} Model & "
+                    + " & ".join(lbl for _, lbl in vs), f"tab_transitions_scaffold_{suf}", two_row=True)
+        x = t[t.metric == name]
+        num(f"tv{'Cu' if name == 'c2u' else 'Rec'}NAllMin", str(int(x[["n0", "n1"]].min().min())), "{}")
+        num(f"tv{'Cu' if name == 'c2u' else 'Rec'}NAllMax", str(int(x[["n0", "n1"]].max().max())), "{}")
     for v, key in (("v2_no_ack", "NoAsst"), (SELF, "Self"), ("v0_baseline", "Orig")):
         for name, mk in (("recovery", "Rec"), ("c2u", "Cu")):
             x = t[(t.variant == v) & (t.metric == name)]
@@ -1573,6 +1609,32 @@ def sec_subsets(p1, probes):
     return t
 
 
+def sec_challenge_prefill(main, B):
+    """Reconstructs the letter prefilled before the "Are you sure?" challenge
+    (sycodef.collect.baseline_letters_from_cache): the most frequent parsed
+    answer among all no-pressure neutral-probe records of the same model,
+    probe and option order (base order: greedy variants 0 and 2 plus three
+    T=0.7 samples; rotated order: greedy variant 1 only), written as the
+    letter of that option order. Compared with B in the canonical frame."""
+    base = main[(main.pressure == "none") & (main.history == "none") & main.answer.notna()]
+    g = base.groupby(["model", "item_id", "option_order"]).answer
+    vc = g.value_counts()
+    top = vc.groupby(level=[0, 1, 2]).transform("max")
+    n_top = (vc == top).groupby(level=[0, 1, 2]).sum()
+    M = g.agg(lambda s_: s_.value_counts().idxmax()).rename("M").reset_index()
+    M["tie"] = n_top.values > 1
+    M["Mc"] = [canon(a, o) for a, o in zip(M.M, M.option_order)]
+    keys = main[main.pressure == "doubt"][["model", "item_id", "option_order"]].drop_duplicates()
+    assert len(keys.merge(M, how="left").query("M != M")) == 0
+    x = M.merge(B, on=["model", "item_id"], how="left")
+    xb = x[x.B.notna()]
+    x.to_csv(RES / "challenge_prefill.csv", index=False)
+    num("pfTriples", f"{len(M):,}", "{}")
+    num("pfTie", pct(M.tie.mean(), 1), "{}")
+    num("pfMatchB", pct((xb.Mc == xb.B).mean(), 1), "{}")
+    num("pfNoB", pct(x.B.isna().mean(), 1), "{}")
+
+
 def sec_shared_arm(main, B):
     """No-pressure arm conditions other than the neutral probe (greedy):
     accuracy, non-answers, answer changes relative to B."""
@@ -1610,9 +1672,12 @@ def sec_shared_arm(main, B):
 
 def sec_credctl(p1, wc):
     """Wording control for the credential (v8): the credential clause replaced
-    by a clause of the same length and construction without authority, full
-    pressure grid on incorrect suggestions. Paired contrasts by (probe,
-    history, prompt variant); Holm over 8 models x 3 contrasts per outcome."""
+    by a word-count-matched clause that claims diligence instead of
+    authority, on every probe and prompt variant with an incorrect
+    suggestion. Paired contrasts by (probe, history, prompt variant); Holm
+    over 8 models x 3 histories (none, 3/3, 0/3) per outcome and contrast.
+    The neutral history was also collected; it is reported without Holm
+    adjustment (p_holm empty) and is not part of any family."""
     inc = p1[p1.position == "incorrect"]
     keys = ["model", "item_id", "history", "rep"]
     bare = inc[inc.signal == "bare"].set_index(keys)
@@ -1620,7 +1685,7 @@ def sec_credctl(p1, wc):
     ctl_ = wc.set_index(keys)
     rows = []
     for m in MORDER:
-        for h, hk in (("3/3", "Good"), ("0/3", "Bad"), ("none", "None")):
+        for h in ("3/3", "0/3", "none", "filler"):
             idx = [k for k in ctl_.index if k[0] == m and k[2] == h]
             c, b_, w_ = cred.loc[idx], bare.loc[idx], ctl_.loc[idx]
             items = np.array([k[1] for k in idx])
@@ -1631,26 +1696,31 @@ def sec_credctl(p1, wc):
                     y = np.r_[f(A_).astype(float).values, f(B_).astype(float).values]
                     gg = np.r_[np.ones(len(idx)), np.zeros(len(idx))]
                     rows.append({"model": m, "history": h, "outcome": o, "contrast": name,
+                                 "rate_a": float(f(A_).mean()), "rate_b": float(f(B_).mean()),
                                  **diff_prop(y, gg, np.r_[items, items])})
     t = pd.DataFrame(rows)
-    t = pd.concat([holm(g) for _, g in t.groupby(["outcome", "contrast"])]).sort_index()
+    fam = t[t.history != "filler"]
+    t = pd.concat([pd.concat([holm(g) for _, g in fam.groupby(["outcome", "contrast"])]),
+                   t[t.history == "filler"]]).sort_index()
     t.to_csv(RES / "credential_wording_control.csv", index=False)
-    out = []
-    for m in MORDER:
-        row = [SHORT[m]]
-        for h in ("3/3", "0/3"):
-            for name in ("wording_vs_bare", "cred_vs_wording"):
-                x = t[(t.model == m) & (t.history == h) & (t.outcome == "endorse")
-                      & (t.contrast == name)].iloc[0]
-                row.append(fmt_pp(x))
-        out.append(row)
-    latex_table(pd.DataFrame(out), "lrrrr",
-                "& \\multicolumn{2}{c}{After 3/3} & \\multicolumn{2}{c}{After 0/3} \\\\ "
-                "\\cmidrule(lr){2-3}\\cmidrule(l){4-5} Model & Wording $-$ bare & "
-                "Credential $-$ wording & Wording $-$ bare & Credential $-$ wording",
-                "tab_credctl", two_row=True)
+    for o, tname in (("endorse", "tab_credctl"), ("non_answer", "tab_credctl_na")):
+        out = []
+        for m in MORDER:
+            row = [SHORT[m]]
+            for h in ("none", "3/3", "0/3"):
+                for name in ("wording_vs_bare", "cred_vs_wording"):
+                    x = t[(t.model == m) & (t.history == h) & (t.outcome == o)
+                          & (t.contrast == name)].iloc[0]
+                    row.append(fmt_pp(x))
+            out.append(row)
+        latex_table(pd.DataFrame(out), "lrrrrrr",
+                    "& \\multicolumn{2}{c}{No history} & \\multicolumn{2}{c}{After 3/3} & "
+                    "\\multicolumn{2}{c}{After 0/3} \\\\ \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}"
+                    "\\cmidrule(l){6-7} Model & " + " & ".join(
+                        [hd("Wording", "$-$ bare"), hd("Credential", "$-$ wording")] * 3),
+                    tname, two_row=True)
     for r in t.itertuples():
-        hk = {"3/3": "Good", "0/3": "Bad", "none": "None"}[r.history]
+        hk = {"3/3": "Good", "0/3": "Bad", "none": "None", "filler": "Filler"}[r.history]
         ck = {"cred_vs_wording": "CW", "wording_vs_bare": "WB", "cred_vs_bare": "CB"}[r.contrast]
         pre = "cc" if r.outcome == "endorse" else "ccNA"
         num(f"{pre}{ck}{hk}{mname(r.model)}", f"{100 * r.diff:+.1f}", "{}")
@@ -1661,6 +1731,8 @@ def sec_credctl(p1, wc):
             num(f"ncc{ck}{hk}Pos", str(int(((x.p_holm < 0.05) & (x["diff"] > 0)).sum())), "{}")
             num(f"ncc{ck}{hk}Neg", str(int(((x.p_holm < 0.05) & (x["diff"] < 0)).sum())), "{}")
     num("nWordingRecords", f"{len(wc):,}", "{}")
+    num("nWordingPerModel", f"{len(wc) // wc.model.nunique():,}", "{}")
+    num("nWordingFamily", str(int(len(e[e.history != "filler"]) // 3)), "{}")
     return t
 
 
@@ -1683,7 +1755,10 @@ def _rescore_change(main, fix):
     p1["correct"] = p1.parsed & (p1.answer == p1.true_letter)
     base = pd.read_csv(RES / "contrasts_pp.csv")
     inc = p1[(p1.position == "incorrect") & p1.history.isin(["0/3", "3/3"])]
-    chg = []
+    chg, nsign, nsig = [], 0, 0
+    global RESCORE_MODELS, RESCORE_MAXABS
+    RESCORE_MODELS = RESCORE_MODELS if "RESCORE_MODELS" in globals() else set()
+    RESCORE_MAXABS = RESCORE_MAXABS if "RESCORE_MAXABS" in globals() else 0.0
     for m in MORDER:
         for sig in ("bare", "credential"):
             g0 = inc[(inc.model == m) & (inc.signal == sig)]
@@ -1691,11 +1766,19 @@ def _rescore_change(main, fix):
                 osub, oy = OUTCOMES[o]
                 g = osub(g0)
                 x = diff_prop(oy(g).astype(float), (g.history == "0/3").astype(float), g.item_id)
-                b0 = base[(base.model == m) & (base.outcome == o) & (base.contrast == (
-                    "hist_bare" if sig == "bare" else "hist_cred"))].iloc[0]["diff"]
+                br = base[(base.model == m) & (base.outcome == o) & (base.contrast == (
+                    "hist_bare" if sig == "bare" else "hist_cred"))].iloc[0]
+                b0 = br["diff"]
                 if np.isfinite(x["diff"]) and np.isfinite(b0):
                     chg.append(abs(x["diff"] - b0))
-    return max(chg), int(hit.sum())
+                    nsign += int(np.sign(x["diff"]) != np.sign(b0) and abs(b0) > 0)
+                    s_new = np.isfinite(x["lo"]) and (x["lo"] > 0 or x["hi"] < 0)
+                    s_old = np.isfinite(br["lo"]) and (br["lo"] > 0 or br["hi"] < 0)
+                    nsig += int(s_new != s_old)
+                    if (np.sign(x["diff"]) != np.sign(b0) and abs(b0) > 0) or s_new != s_old:
+                        RESCORE_MODELS.add(SHORT[m])
+                        RESCORE_MAXABS = max(RESCORE_MAXABS, abs(b0), abs(x["diff"]))
+    return max(chg), int(hit.sum()), nsign, nsig
 
 
 def sec_parser_check(main, chk):
@@ -1755,7 +1838,8 @@ def sec_parser_check(main, chk):
     num("pcNAWithOption", str(int(((d.set == "non_answer_other") & d.llm.isin(list(LET))).sum())), "{}")
     num("pcFlagAmbig", str(int(((d.set == "flagged") & (d.llm == "ambiguous")).sum())), "{}")
     num("pcSampleDis", str(int(((d.set == "stratified_sample") & ~d.agree).sum())), "{}")
-    mx, nres = _rescore_change(main, dis.set_index("record_id").llm)
+    mx, nres, ns1, nc1 = _rescore_change(main, dis.set_index("record_id").llm)
+    num("pcSignChange", str(ns1), "{}"); num("pcSigChange", str(nc1), "{}")
     num("pcMaxChange", f"{100 * mx:.2f}", "{}")
     num("pcNRescored", str(nres), "{}")
     if two:
@@ -1775,9 +1859,14 @@ def sec_parser_check(main, chk):
         num("pcConsensusNAOpt", str(int(((cons.set == "non_answer_other")
                                           & cons.llm.isin(list(LET))).sum())), "{}")
         dis2 = d[~d.agree2 & (d.llm2 != "error")]
-        mx2, _ = _rescore_change(main, dis2.set_index("record_id").llm2)
+        mx2, _, ns2, nc2 = _rescore_change(main, dis2.set_index("record_id").llm2)
+        num("pcSignChangeB", str(ns2), "{}"); num("pcSigChangeB", str(nc2), "{}")
         num("pcMaxChangeB", f"{100 * mx2:.2f}", "{}")
-        mxc, nc = _rescore_change(main, cons.set_index("record_id").llm)
+        mxc, nc, ns3, nc3 = _rescore_change(main, cons.set_index("record_id").llm)
+        num("pcSignChangeCons", str(ns3), "{}"); num("pcSigChangeCons", str(nc3), "{}")
+        num("pcSignChangeAll", str(ns1 + ns2 + ns3), "{}"); num("pcSigChangeAll", str(nc1 + nc2 + nc3), "{}")
+        num("pcChangeModels", ", ".join(sorted(RESCORE_MODELS)) or "none", "{}")
+        num("pcChangeMaxAbs", f"{100 * RESCORE_MAXABS:.1f}", "{}")
         num("pcMaxChangeCons", f"{100 * mxc:.2f}", "{}")
         num("pcNRescoredCons", str(nc), "{}")
     return d
@@ -1802,18 +1891,20 @@ def style():
 
 
 def fig_outcomes(g):
+    """Figure 2: drawn at the printed width (\\textwidth, 6.3 in) so that
+    labels are 8-9 pt in the PDF."""
     import matplotlib.pyplot as plt
     style()
-    fig, axes = plt.subplots(2, 4, figsize=(7.0, 3.9), sharey=True)
-    xs, labels = [], []
+    plt.rcParams.update({"font.size": 9, "axes.titlesize": 9, "axes.labelsize": 9,
+                         "xtick.labelsize": 8.5, "ytick.labelsize": 8, "legend.fontsize": 8.5})
+    fig, axes = plt.subplots(2, 4, figsize=(6.3, 3.75), sharey=True)
+    xs = []
     for i, h in enumerate(HIST):
         for j, s in enumerate(("bare", "credential")):
-            xs.append(i * 2.6 + j * 1.05)
-            labels.append((h if h != "filler" else "neutral", s))
+            xs.append(i * 2.5 + j * 1.05)
     for ax, m in zip(axes.flat, MORDER):
         gm = g[g.model == m]
         bottom = np.zeros(len(xs))
-        k = 0
         for c in CATS:
             vals = []
             for h in HIST:
@@ -1822,47 +1913,55 @@ def fig_outcomes(g):
             ax.bar(xs, vals, 0.95, bottom=bottom, color=COL[c], edgecolor="white", lw=0.4,
                    hatch=HATCH[c], label=CLAB[c] if m == MORDER[0] else None)
             bottom += np.array(vals)
-        ax.set_title(SHORT[m])
-        ax.set_xticks([i * 2.6 + 0.52 for i in range(4)])
-        ax.set_xticklabels(["none", "neutral", "3/3", "0/3"])
-        ax.set_ylim(0, 1)
+        ax.set_title(SHORT[m], pad=9)
+        ax.set_xticks([i * 2.5 + 0.52 for i in range(4)])
+        ax.set_xticklabels(["none", "neut.", "3/3", "0/3"])
+        ax.tick_params(axis="x", length=0, pad=2)
+        ax.set_ylim(0, 1); ax.set_yticks([0, 0.5, 1]); ax.set_yticklabels(["0", ".5", "1"])
         for i in range(4):
-            ax.text(i * 2.6, 1.01, "b", ha="center", fontsize=5.5, color="#555")
-            ax.text(i * 2.6 + 1.05, 1.01, "c", ha="center", fontsize=5.5, color="#555")
-    axes[0, 0].set_ylabel("share of records"); axes[1, 0].set_ylabel("share of records")
-    fig.legend(loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.03))
-    fig.supxlabel("user's track record in the dialogue (b = bare assertion, c = credential)",
-                  fontsize=8, y=0.04)
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+            ax.text(i * 2.5, 1.015, "b", ha="center", va="bottom", fontsize=7.5, color="#444")
+            ax.text(i * 2.5 + 1.05, 1.015, "c", ha="center", va="bottom", fontsize=7.5, color="#444")
+    axes[0, 0].set_ylabel("share"); axes[1, 0].set_ylabel("share")
+    fig.legend(loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.005), handlelength=1.4,
+               columnspacing=1.0, handletextpad=0.4)
+    fig.tight_layout(rect=(0, 0.06, 1, 1), h_pad=0.6, w_pad=0.4)
     fig.savefig(FIG / "fig_outcomes.pdf"); fig.savefig(FIG / "fig_outcomes.png", dpi=200)
     plt.close(fig)
 
 
 def fig_robust(rates, refusing):
+    """Figure 3 (appendix, own page): four rows by two columns, horizontal
+    bars so that the condition labels are horizontal and 9 pt."""
     import matplotlib.pyplot as plt
     style()
-    fig, axes = plt.subplots(2, 4, figsize=(7.0, 3.9), sharey=True)
+    plt.rcParams.update({"font.size": 9, "axes.titlesize": 9.5, "axes.labelsize": 9,
+                         "xtick.labelsize": 8.5, "ytick.labelsize": 9, "legend.fontsize": 9})
+    fig, axes = plt.subplots(4, 2, figsize=(6.3, 8.4), sharex=True, sharey=True)
     axes = np.atleast_1d(axes).ravel()
-    x = np.arange(len(VARIANTS))
+    labs = ["original", "ack changed", "no assistant turns", "letter mandate",
+            "format-compat.", "no confidence", "context-only", "self-generated"]
+    y = np.arange(len(VARIANTS))[::-1]
     for ax, m in zip(axes, refusing):
         for k, (h, c, hat) in enumerate((("3/3", "#4C72B0", ""), ("0/3", "#C44E52", "////"))):
             v = [rates[(rates.model == m) & (rates.variant == vv) & (rates.history == h)]
                  .rate.squeeze() if len(rates[(rates.model == m) & (rates.variant == vv)
                                                & (rates.history == h)]) else np.nan
                  for vv, _ in VARIANTS]
-            ax.bar(x + (k - 0.5) * 0.38, v, 0.38, color=c, edgecolor="white", lw=0.4,
-                   hatch=hat, label=f"history {h}" if m == refusing[0] else None)
-            for xi, vi in zip(x, v):
+            yy = y + (0.5 - k) * 0.4
+            ax.barh(yy, v, 0.4, color=c, edgecolor="white", lw=0.4, hatch=hat,
+                    label=f"history {h}" if m == refusing[0] else None)
+            for yi, vi in zip(yy, v):
                 if np.isfinite(vi) and vi == 0:
-                    ax.text(xi + (k - 0.5) * 0.38, 0.01, "0", ha="center", va="bottom",
-                            fontsize=5, color=c)
-        ax.set_title(SHORT[m]); ax.set_xticks(x)
-        ax.set_xticklabels(["orig", "ack", "no asst", "letter", "fmt", "no conf", "context", "self"],
-                           fontsize=5.5, rotation=45, ha="right", rotation_mode="anchor")
-        ax.set_ylim(0, 1)
-    axes[0].set_ylabel("non-answer rate"); axes[4].set_ylabel("non-answer rate")
-    axes[0].legend(loc="upper right")
-    fig.tight_layout()
+                    ax.text(0.01, yi, "0", ha="left", va="center", fontsize=7, color=c)
+        ax.set_title(SHORT[m])
+        ax.set_yticks(y); ax.set_yticklabels(labs)
+        ax.set_xlim(0, 1); ax.set_xticks([0, 0.25, 0.5, 0.75, 1])
+        ax.grid(axis="x", color="#e5e5e5", lw=0.5); ax.set_axisbelow(True)
+    for ax in axes[-2:]:
+        ax.set_xlabel("non-answer rate")
+    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=2,
+               bbox_to_anchor=(0.5, -0.005))
+    fig.tight_layout(rect=(0, 0.03, 1, 1), h_pad=1.0, w_pad=1.0)
     fig.savefig(FIG / "fig_robust.pdf"); fig.savefig(FIG / "fig_robust.png", dpi=200)
     plt.close(fig)
 
@@ -1871,7 +1970,9 @@ def fig_null(t):
     import matplotlib.pyplot as plt
     style()
     t = t.sort_values("excess_flip").reset_index(drop=True)
-    fig, ax = plt.subplots(figsize=(3.2, 2.9))
+    plt.rcParams.update({"font.size": 8.5, "xtick.labelsize": 8, "ytick.labelsize": 8.5,
+                         "axes.labelsize": 8.5})
+    fig, ax = plt.subplots(figsize=(3.1, 3.0))
     y = np.arange(len(t))
     ax.hlines(y, t.matched_null, t.raw_flip, color="#cccccc", lw=0.8)
     ax.plot(t.raw_flip, y, "o", ms=3.5, color="#C44E52", label="raw flip rate")
@@ -1881,8 +1982,8 @@ def fig_null(t):
                 fmt="s", ms=3, color="#4C72B0", lw=0.8, capsize=1.5,
                 label="difference [95% CI]")
     ax.set_yticks(y); ax.set_yticklabels([SHORT[m] for m in t.model])
-    ax.set_xlim(0, 1); ax.set_xlabel("share of baseline-defined records whose answer differs from B")
-    ax.legend(loc="lower left", bbox_to_anchor=(-0.02, 1.0), ncol=2, fontsize=6, handletextpad=0.3, columnspacing=0.8)
+    ax.set_xlim(0, 1); ax.set_xlabel("share of pairs whose answer differs from $B$")
+    ax.legend(loc="lower left", bbox_to_anchor=(-0.02, 1.0), ncol=2, fontsize=7.5, handletextpad=0.3, columnspacing=0.8)
     fig.tight_layout()
     fig.savefig(FIG / "fig_null.pdf"); fig.savefig(FIG / "fig_null.png", dpi=200)
     plt.close(fig)
@@ -1907,7 +2008,10 @@ def main():
     tr = pd.read_csv(tr_path) if tr_path.exists() else None
 
     num("nMain", f"{len(main_df):,}", "{}")
-    num("pctBaselineStable", pct(B.baseline_stable.mean(), 1), "{}")
+    n_pairs = main_df.model.nunique() * main_df[main_df.arm == "shared"].item_id.nunique()
+    num("pctBaselineStable", pct(B.B.notna().sum() / n_pairs, 1), "{}")
+    num("nBaselinePairs", f"{n_pairs:,}", "{}")
+    sec_challenge_prefill(main_df, B)
     sec_items(probes, cal, cmap, main_df)
     sec_models(main_df, B, rob, meta.get("throughput", {}), meta.get("revisions", {}))
     sec_nonanswer(main_df, probes)
@@ -1971,6 +2075,9 @@ def main():
         sec_parser_check(main_df, pd.read_csv(chk_path))
     fig_outcomes(g)
     fig_robust(rates, MORDER)
+    for k_, v_ in list(NUM.items()):   # percent twin of every proportion: <name>Pc
+        if re.fullmatch(r"[01][.][0-9]{3}", str(v_)) and k_ + "Pc" not in NUM:
+            NUM[k_ + "Pc"] = f"{100 * float(v_):.1f}"
     def tex(v):  # thousands separators must not become math-mode punctuation
         return v.replace(",", "{,}") if re.fullmatch(r"[+-]?[\d,]+(\.\d+)?", v) else v
     macros = "\n".join(f"\\newcommand{{\\{k}}}{{{tex(v)}}}" for k, v in sorted(NUM.items()))

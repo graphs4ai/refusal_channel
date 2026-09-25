@@ -1,4 +1,4 @@
-# When prefilled assistant turns produce non-answers: auditing multi-turn sycophancy scaffolds
+# When prefilled assistant turns produce non-answers: auditing a multi-turn sycophancy scaffold
 
 Code, prompts and all generations for the paper of the same title (anonymous
 submission). Every table, figure and in-text number of the paper is produced
@@ -12,7 +12,7 @@ sycodef/          collection package (items, design grid, prompts, runner/cache,
 scripts/          numbered pipeline steps (see below)
 config/           model configuration used for the runs (checkpoints, dtype, limits)
 data/             released record tables (gzipped CSV) + item pools + run log
-results/          CSV versions of every table (generated)
+results/          CSV versions of every table (generated); results/challenge_prefill.csv reconstructs the answer prefilled before the "Are you sure?" challenge
 paper/            LaTeX source; paper/generated/ and paper/figures/ are generated
 tests/            regression tests for the harness defects described in the paper
 ```
@@ -45,7 +45,7 @@ Gated checkpoints (Llama-3.1, Gemma) need a Hugging Face token.
 | auxiliary experiments III | `15_review3_experiments.py` | v7 context-only system prompt (robustness grid), v8 credential wording control (full pressure grid, incorrect suggestions) |
 | release tables | `19_assemble_release_data.py` | `data/*.csv.gz` |
 | paper | `20_paper_analysis.py` | tables, figures, macros |
-| parser check | `21_parser_check.py` | independent answer extraction by two open-weight models outside the panel (gpt-oss-20b and phi4-14b via Ollama): `build`, `annotate`, `collect` → `data/parser_check.csv`; the second checker was picked among four candidates on 60 outputs (`results/parser_check_candidates.csv`, `results/parser_check_candidates_input.jsonl`) |
+| parser check | `21_parser_check.py` | independent answer extraction by two open-weight models outside the panel (gpt-oss-20b and phi4-14b via Ollama 0.20.2; tags, quantizations and digests in `data/generation_log.json`): `build`, `annotate`, `collect` → `data/parser_check.csv`; the second checker was picked among four candidates on 60 outputs (`results/parser_check_candidates.csv`, `results/parser_check_candidates_input.jsonl`) |
 
 Scripts `04`, `05`, `07`, `08`, `10` are earlier analyses (two-stage model,
 power simulations) kept for transparency; the paper's numbers come from `20`.

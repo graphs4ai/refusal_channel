@@ -14,7 +14,8 @@ Tables~\ref{tab:outcome-counts-a} and~\ref{tab:outcome-counts-b}.}
 \caption{Models (release month of the checkpoint). Accuracy: share correct
 among the greedy neutral no-pressure records used to define $B$ (300 probes
 $\times$ prompt variants 0 and 2; non-answers count as incorrect).
-Non-answer (count) and truncated: shares of the 16{,}000 pressure-arm records;
+Non-answer (count): share of the 16{,}000 pressure-arm records; truncated:
+share of the 21{,}400 main-arm records;
 $<$0.001 marks a positive share that rounds to zero.}
 \label{tab:models}
 \end{table*}
@@ -26,8 +27,9 @@ $<$0.001 marks a positive share that rounds to zero.}
 suggestion. Left: original scaffold, bare assertion, 1{,}000 records per
 history and model, scored as non-answer rate, unconditional endorsement and
 endorsement among parsed answers ($^{*}$: Holm over 8 models $\times$ 4
-primary contrasts within each scoring), with worst-case bounds on the
-endorsement contrast that make no assumption about the non-answering records.
+primary contrasts within each scoring), with completion bounds obtained by assigning every non-answer either
+endorsement or non-endorsement while keeping the observed answers (not
+confidence intervals).
 Right: endorsement in the two variants without prefilled acknowledgements
 (100 MMLU-Pro probes, prompt variant 0, both signals: 200 records per history
 and model; $^{*}$: Holm over the 64 tests of Table~\ref{tab:variant-endorse});
