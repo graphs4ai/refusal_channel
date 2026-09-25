@@ -167,7 +167,7 @@ def diff_prop(y, g, cluster):
     X = sm.add_constant(g)
     f = sm.OLS(y, X).fit(cov_type="cluster", cov_kwds={"groups": np.asarray(cluster)})
     se = float(f.bse[1])
-    if not np.isfinite(se) or se == 0:
+    if not np.isfinite(se) or se < 1e-9:   # zero up to floating-point noise
         out["note"] = "degenerate SE"
         return out
     out.update(lo=out["diff"] - 1.96 * se, hi=out["diff"] + 1.96 * se,
