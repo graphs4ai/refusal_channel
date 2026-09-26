@@ -127,7 +127,7 @@ same probe in the same option order, written as the letter of that order
 (\texttt{baseline\_letters\_from\_cache} in \texttt{sycodef/collect.py}). The
 greedy variants $r{=}0$ and $r{=}2$ share one option order and $r{=}1$ has the
 other (\S\ref{sec:design}); the three $T{=}0.7$ samples always use the base
-order. $M$ therefore pools the greedy answers in that order and, for the base
+order and paraphrase~0. $M$ therefore pools the greedy answers in that order and, for the base
 order, the three samples. Every model--probe--order triple had at least one
 parsed answer; ties ($\pfTie\%$ of the $\pfTriples$ triples) go to the answer
 that occurs first in design order (lower $r$ first, greedy before samples).
