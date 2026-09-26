@@ -606,6 +606,7 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
     kept separate: matched neutral probe (same configuration, greedy), the
     shared-arm form replicate (greedy) and stochastic decoding (T=0.7)."""
     p1_items = set(p1c.item_id)
+    KP = {iid: k for k, iid in enumerate(pd.read_csv(DATA / "items_probes.csv").item_id)}
     d = p1c.merge(B, on=["model", "item_id"], how="left")
     # replicates 0 and 2 of the no-history cell have exactly the prompts that
     # define B, so their matched controls ARE the baseline calls; comparing
@@ -633,6 +634,12 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
         ff, _ = flip(form)
         sto = sh[(sh.model == m) & (sh.pressure == "none") & (sh.decode == "sample")]
         fs, _ = flip(sto)
+        # the samples always use the base option order (and paraphrase 0),
+        # whereas the prompts that define B (r=0, 2) use order k mod 2; for odd
+        # k the T=0.7 null therefore also contains an option-order change.
+        # Same-order version: even k only, where both use the base order.
+        assert (sto.option_order == 0).all()
+        fs_so, _ = flip(sto[sto.item_id.map(KP).mod(2) == 0])
         dbt = sh[(sh.model == m) & (sh.pressure == "doubt") & (sh.decode == "greedy")]
         fd, _ = flip(dbt)
         ref = sh[(sh.model == m) & (sh.pressure == "reformulation") & (sh.decode == "greedy")]
@@ -669,6 +676,7 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
                      "excess_flip": ex["diff"], "excess_lo": ex["lo"], "excess_hi": ex["hi"],
                      "null_share": fc.mean() / fp.mean() if fp.mean() > 0 else np.nan,
                      "form_null_shared": ff.mean(), "stochastic_null": fs.mean(),
+                     "stochastic_null_same_order": fs_so.mean(), "n_sto_same_order": len(fs_so),
                      "doubt_flip": fd.mean(), "reformulation_flip": fr.mean(),
                      "endorse": g.endorse.mean(), "ctl_endorse": g.ctl_endorse.mean(),
                      "excess_endorse": exe["diff"], "excess_endorse_lo": exe["lo"],
@@ -727,6 +735,8 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
         num(f"rankDiffLo{mname(m)}", f"{rr_.loc[m, 'rank_excess_lo']:.0f}", "{}")
         num(f"rankDiffHi{mname(m)}", f"{rr_.loc[m, 'rank_excess_hi']:.0f}", "{}")
     num("stoNullMin", t.stochastic_null.min()); num("stoNullMax", t.stochastic_null.max())
+    num("stoNullSOMin", t.stochastic_null_same_order.min())
+    num("stoNullSOMax", t.stochastic_null_same_order.max())
     num("formNullMin", t.form_null_shared.min()); num("formNullMax", t.form_null_shared.max())
     num("nBoot", f"{n_boot:,}", "{}")
     out = []
@@ -736,12 +746,14 @@ def sec_null(main, p1c, ctl, B, n_boot=2000):
                     f"{r.excess_flip:+.3f} [{r.excess_lo:+.3f}, {r.excess_hi:+.3f}]",
                     f"{r.rank_raw} ({r.rank_raw_lo:.0f}--{r.rank_raw_hi:.0f})",
                     f"{r.rank_excess} ({r.rank_excess_lo:.0f}--{r.rank_excess_hi:.0f})",
-                    f"{r.form_null_shared:.3f}", f"{r.stochastic_null:.3f}"])
-    latex_table(pd.DataFrame(out), "lrrrrrrrr",
+                    f"{r.form_null_shared:.3f}", f"{r.stochastic_null:.3f}",
+                    f"{r.stochastic_null_same_order:.3f}"])
+    latex_table(pd.DataFrame(out), "lrrrrrrrrr",
                 "Model & " + " & ".join([hd("Pairs", "(probes)"), "Pressured", hd("Matched", "control"),
                                           hd("Difference", "[95\\% CI]"), hd("Rank", "raw"),
                                           hd("Rank", "diff."), hd("Form", "null"),
-                                          hd("$T{=}0.7$", "null")]), "tab_null", two_row=True)
+                                          hd("$T{=}0.7$", "null"), hd("$T{=}0.7$,", "same order")]),
+                "tab_null", two_row=True)
     out = []
     for r in t.itertuples():
         out.append([SHORT[r.model], f"{r.n_pairs}", f"{r.n_baseline_correct}",
@@ -1671,7 +1683,11 @@ def sec_shared_arm(main, B, M=None):
                 dm = gg.merge(M[["model", "item_id", "option_order", "Mc", "B"]].rename(
                     columns={"B": "B_"}), on=["model", "item_id", "option_order"], how="left")
                 dm = dm[dm.canon_answer.notna()]
-                rec["from_M"] = float((dm.canon_answer != dm.Mc).mean())
+                # all parsed challenge records (kept in the CSV) and, for the
+                # table, the same baseline-defined records as the flip column
+                rec["from_M_all"] = float((dm.canon_answer != dm.Mc).mean())
+                dmb = dm[dm.B_.notna()]
+                rec["from_M"] = float((dmb.canon_answer != dmb.Mc).mean())
                 same = dm[dm.B_.notna() & (dm.Mc == dm.B_)]
                 rec["flip_doubt_MB"] = float((same.canon_answer != same.B_).mean())
                 rec["n_doubt_MB"] = len(same)

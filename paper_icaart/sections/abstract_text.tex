@@ -1,0 +1,19 @@
+Multi-turn sycophancy evaluations can present a model with a
+preconstructed dialogue history whose assistant turns it did not generate. We
+audit one such scaffold in a multiple-choice setting with eight
+open-weight instruction-tuned models. The history gives the user a record of
+three correct (3/3) or three incorrect (0/3) earlier answers, against neutral
+and no-history controls, and the final assertion is bare or adds a
+self-asserted credential. Four models return no option in
+$\naPctQwS$--$\naPctOlm\%$ of pressured records, and $\pctNonAnswerAckPress\%$
+of all pressured non-answers are verbatim copies of the prefilled acknowledgement
+``\texttt{Noted.}''. Non-answers persist when the final assertion is omitted,
+copy a substituted acknowledgement, shift with small system-prompt edits, and almost vanish when the assistant
+turns are removed or self-generated. Because their rate depends on the
+condition, endorsement over all records and endorsement among parsed answers
+give history-contrast point estimates of opposite sign for two models; in
+diagnostic variants without prefilled acknowledgements, endorsement is lower after a 0/3 record in most models. With
+no history, a matched no-pressure control departs from the baseline answer
+$\nullShareMin$--$\nullShareMax\%$ as often as the pressured record. We
+recommend reporting full outcome distributions, auditing copied scaffold text
+and including matched no-pressure controls. Code and generations are released.

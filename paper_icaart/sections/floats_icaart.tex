@@ -1,0 +1,102 @@
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_outcomes.pdf}
+\caption{Outcomes on incorrect suggestions by model, history (none, neutral,
+3/3, 0/3) and signal (b: bare assertion, c: credential). Each bar is 1{,}000
+records (200 probes $\times$ 5 prompt variants); event counts are released.}
+\label{fig:outcomes}
+\end{figure*}
+
+\begin{table*}[t]
+\caption{Models (release month of the checkpoint). Accuracy: share correct
+among the greedy neutral no-pressure records used to define $B$ (300 probes
+$\times$ prompt variants 0 and 2; non-answers count as incorrect).
+Non-answer (count): share of the 16{,}000 pressure-arm records; truncated:
+share of the 21{,}400 main-arm records;
+$<$0.001 marks a positive share that rounds to zero.}
+\label{tab:models}
+\centering\small
+\input{../paper/generated/tab_models}
+\end{table*}
+
+\begin{table*}[t]
+\caption{History contrast (0/3 minus 3/3, pp [95\% CI]) on an incorrect
+suggestion. Left: original scaffold, bare assertion, 1{,}000 records per
+history and model, scored as non-answer rate, unconditional endorsement and
+endorsement among parsed answers ($^{*}$: Holm over 8 models $\times$ 4
+primary contrasts within each scoring), with completion bounds obtained by
+assigning every non-answer either endorsement or non-endorsement while keeping
+the observed answers (not confidence intervals). Right: endorsement in the two
+variants without prefilled acknowledgements (100 MMLU-Pro probes, prompt
+variant 0, both signals: 200 records per history and model; $^{*}$: Holm over
+64 tests); these variants have almost no non-answers. n.e.: all outcomes
+identical in both groups, so the clustered interval is not estimable.}
+\label{tab:scoring}
+\centering\footnotesize\setlength{\tabcolsep}{2.2pt}
+\input{../paper/generated/tab_history_scoring}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Non-answer rate (events) by scaffold, pooling 3/3 and 0/3
+histories, both signals and both suggestions (800 records per cell; 100
+MMLU-Pro probes, prompt variant 0). Orig.: original scaffold; ack changed:
+another acknowledgement; no asst.\ turns: history merged into one user turn;
+letter mandate: explicit instruction to give a letter; format-compat.: system
+prompt that asks for ``\texttt{Noted.}'' on earlier messages; no conf.: no
+confidence field; context-only: system prompt that calls earlier messages
+context without naming any acknowledgement; self-generated: the model's own
+replies as assistant turns.}
+\label{tab:variants}
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
+\input{../paper/generated/tab_variants}
+\end{table*}
+
+
+\begin{table*}[t]
+\caption{Endorsement of an incorrect suggestion (non-answers counted as
+non-endorsement), pp [95\% CI], on all 200 probes and five prompt variants
+with an incorrect suggestion (1{,}000 paired records per history and model).
+Wording: the credential clause replaced by a word-count-matched clause that
+claims diligence (Appendix). $^{*}$ Holm over 24 tests per contrast
+(8 models $\times$ the none, 3/3 and 0/3 histories).}
+\label{tab:credctl}
+\centering\small\setlength{\tabcolsep}{3pt}
+\input{../paper/generated/tab_credctl}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Baseline-eligible transitions after 3/3 and 0/3 records, bare
+assertion. Recovery: share answering $g$ when the user suggests $g$ and $B$
+was wrong. Correct-to-suggested: share endorsing a wrong suggestion when $B$
+was correct. $n$: eligible records; non-answers count as failures of the
+event. $\Delta$: 0/3 minus 3/3, pp [95\% CI]; $^{*}$ Holm over 16 tests per
+metric (8 models $\times$ 2 signals).}
+\label{tab:correct}
+\centering\small\setlength{\tabcolsep}{4pt}
+\input{../paper/generated/tab_correct_suggestions}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/fig_null.pdf}
+\caption{No history, bare incorrect assertion, pressured prompt variants
+$r\in\{1,3,4\}$: pressured and matched-control flip rates on the same
+eligible pairs ($\nullPairsMin$--$\nullPairsMax$ per model: defined $B$,
+parsed answer in both records), with their paired difference and pointwise
+95\% CI from a linear probability model on the stacked pairs (SE clustered on
+probe). Models are sorted by the difference.}
+\label{fig:null}
+\end{figure*}
+
+\begin{table*}[t]
+\caption{Hugging Face checkpoints and revisions used. Technical reports:
+Mistral-7B \citep{jiang-etal-2023-mistral}, Gemma-2 \citep{gemmateam-2024-gemma2},
+Llama-3.1 \citep{grattafiori-etal-2024-llama3}, Qwen2.5
+\citep{qwenteam-2024-qwen25}, with AWQ quantisation \citep{lin-etal-2024-awq},
+Qwen3 \citep{yang-etal-2025-qwen3}, Olmo-3 \citep{teamolmo-2025-olmo3} and
+Gemma-4 \citep{gemmateam-2026-gemma4}. Gemma-4-E4B has 4.5B effective
+parameters and about 8B including embeddings \citep{google-2026-gemma4}.}
+\label{tab:checkpoints}
+\centering\small
+\input{../paper/generated/tab_checkpoints}
+\end{table*}

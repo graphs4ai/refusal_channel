@@ -1,0 +1,54 @@
+\documentclass[a4paper,twoside]{article}
+
+\usepackage{epsfig}
+\usepackage{subcaption}
+\usepackage{calc}
+\usepackage{amssymb}
+\usepackage{amstext}
+\usepackage{amsmath}
+\usepackage{multicol}
+\usepackage{pslatex}
+% natbib replaces apalike.sty: it reads the same apalike.bst and adds the
+% textual citations (\citet) used throughout the text.
+\usepackage[round,sort]{natbib}
+\setcitestyle{semicolon}
+\usepackage{algorithm2e}
+\usepackage[bottom]{footmisc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{url}
+\setlist{nosep,leftmargin=*}
+\graphicspath{{../paper/}}
+\usepackage{SCITEPRESS}     % Please add other packages that you may need BEFORE the SCITEPRESS.sty package.
+
+\input{../paper/generated/numbers}
+\newcommand{\repourl}{\url{https://anonymous.4open.science/r/prefill-nonanswers}}
+
+\begin{document}
+
+\title{When Prefilled Assistant Turns Produce Non-Answers: Auditing a Multi-Turn Sycophancy Scaffold}
+
+\author{\authorname{Anonymous}
+\affiliation{Anonymous submission for double-blind review}
+\email{}
+}
+
+\keywords{Large Language Models, Sycophancy, Evaluation Methodology, Multi-Turn Dialogue, Measurement Validity, Prefilled Dialogue History.}
+
+\abstract{\input{sections/abstract_text}}
+
+\onecolumn \maketitle \normalsize \setcounter{footnote}{0} \vfill
+
+\input{sections/body_icaart}
+
+\bibliographystyle{apalike}
+{\small
+\bibliography{../paper/references}}
+
+\input{sections/appendix_icaart}
+
+\end{document}

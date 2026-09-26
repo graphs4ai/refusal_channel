@@ -13,7 +13,8 @@ scripts/          numbered pipeline steps (see below)
 config/           model configuration used for the runs (checkpoints, dtype, limits)
 data/             released record tables (gzipped CSV) + item pools + run log
 results/          CSV versions of every table (generated); results/challenge_prefill.csv reconstructs the answer prefilled before the "Are you sure?" challenge
-paper/            LaTeX source; paper/generated/ and paper/figures/ are generated
+paper/            LaTeX source (ACL format); paper/generated/ and paper/figures/ are generated
+paper_icaart/     the same study in the SCITEPRESS format (reuses paper/generated, figures, references)
 tests/            regression tests for the harness defects described in the paper
 ```
 
@@ -24,6 +25,7 @@ python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 PYTHONPATH=. python scripts/20_paper_analysis.py      # results/, paper/generated/, paper/figures/
 cd paper && latexmk -pdf sycophancy.tex
+cd ../paper_icaart && latexmk -pdf sycophancy_icaart.tex   # needs algorithm2e.sty (SCITEPRESS template)
 PYTHONPATH=. python -m pytest -q tests                 # optional
 ```
 

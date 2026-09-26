@@ -603,6 +603,8 @@
  "rankDiffHiGfour": "8",
  "stoNullMin": "0.056",
  "stoNullMax": "0.282",
+ "stoNullSOMin": "0.003",
+ "stoNullSOMax": "0.106",
  "formNullMin": "0.131",
  "formNullMax": "0.459",
  "nBoot": "2,000",
@@ -768,8 +770,8 @@
  "sgContraMax": "67",
  "sgAgreeGoodMin": "89",
  "nSubsetSignFlips": "0",
- "fromMMin": "0.5",
- "fromMMax": "54.4",
+ "fromMMin": "0.1",
+ "fromMMax": "52.5",
  "doubtFlipMin": "8",
  "doubtFlipMax": "49",
  "reformFlipMin": "6",
@@ -1165,6 +1167,8 @@
  "rawMaxPc": "79.7",
  "stoNullMinPc": "5.6",
  "stoNullMaxPc": "28.2",
+ "stoNullSOMinPc": "0.3",
+ "stoNullSOMaxPc": "10.6",
  "formNullMinPc": "13.1",
  "formNullMaxPc": "45.9"
 }

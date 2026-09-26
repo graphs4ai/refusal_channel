@@ -22,7 +22,12 @@ and $\nTruncRerunRob$ robustness-arm truncated non-answers.}
 \begin{table*}[h]
 \centering\small
 \input{generated/tab_checkpoints}
-\caption{Hugging Face checkpoints and revisions used. Gemma-4-E4B has 4.5B
+\caption{Hugging Face checkpoints and revisions used. Technical reports:
+Mistral-7B \citep{jiang-etal-2023-mistral}, Gemma-2 \citep{gemmateam-2024-gemma2},
+Llama-3.1 \citep{grattafiori-etal-2024-llama3}, Qwen2.5
+\citep{qwenteam-2024-qwen25}, with AWQ quantisation \citep{lin-etal-2024-awq},
+Qwen3 \citep{yang-etal-2025-qwen3}, Olmo-3 \citep{teamolmo-2025-olmo3} and
+Gemma-4 \citep{gemmateam-2026-gemma4}. Gemma-4-E4B has 4.5B
 effective parameters and about 8B including embeddings, according to its
 model card \citep{google-2026-gemma4}.}
 \label{tab:checkpoints}
@@ -190,7 +195,7 @@ outputs to two open-weight models outside the evaluated panel and from
 different developers, gpt-oss-20b \citep{openai-2025-gptoss} at low reasoning
 effort and Phi-4 \citep{abdin-etal-2024-phi4}, both served by Ollama 0.20.2 at
 temperature 0 as \texttt{gpt-oss:20b} (MXFP4) and \texttt{phi4:14b}
-(Q4\_K\_M); the model digests are in \texttt{data/generation\_log.json}. Phi-4 was chosen among
+(Q4\_K\_M); the model digests are in \texttt{data/generation\_log.json}. \mbox{Phi-4} was chosen among
 four fast candidates as the one agreeing most with gpt-oss-20b on a trial of
 60 outputs (released with the repository), so the two readings are not fully
 independent. Each checker saw the question, the lettered options and the
@@ -201,7 +206,7 @@ released in \texttt{results/parser\_audit\_sample.csv}; the $\pcNFlag$ flagged
 outputs not in that sample (the two rules above flag 306 distinct outputs,
 3 of which are in the sample); the $\pcNNA$ main-arm non-answers that are not
 the bare acknowledgement; and 40 random bare acknowledgements. On the
-stratified sample the parser agrees with gpt-oss-20b in $\pcAgreeSample\%$ and
+stratified sample the parser agrees with \mbox{gpt-oss-20b} in $\pcAgreeSample\%$ and
 with Phi-4 in $\pcAgreeSampleB\%$ of cases, and the checkers agree with each
 other in $\pcCheckersSample\%$ (Table~\ref{tab:parser-check}). Both checkers
 disagree with the parser, and agree with each other, on $\pcConsensus$
@@ -382,7 +387,11 @@ linear probability model on the stacked pairs (SE clustered on probe). Ranks
 (1 = most flips) with probe-bootstrap 95\% intervals. Form null: no-pressure
 prompt variant with different paraphrase and option order (shared arm,
 greedy variant 1, the same 200 probes, parsed records with a defined $B$);
-$T{=}0.7$: the three shared-arm samples of the same probes.
+$T{=}0.7$: the three shared-arm samples of the same probes, always in the
+base option order and paraphrase~0; for odd $k$ this order differs from that
+of the prompts that define $B$, so the column also reflects an option-order
+change. $T{=}0.7$, same order: even $k$ only, where the samples and the
+prompts that define $B$ share the option order.
 Table~\ref{tab:shared} uses all 300 probes, so its neutral-probe flip
 differs slightly from the form null.}
 \label{tab:null}
@@ -469,7 +478,8 @@ are not comparable with the neutral-probe flip. Correct$\to$wrong: share
 not correct among records with $B{=}g$. The challenge follows a prefilled
 answer $M$ (Appendix~\ref{app:prompts}); flips are scored against $B$, so a
 record that keeps a prefilled $M\neq B$ counts as a flip. From $M$: share of
-parsed challenge records whose answer differs from $M$. Flip, $M{=}B$: flip
+the same baseline-defined parsed challenge records whose answer differs from
+$M$. Flip, $M{=}B$: flip
 restricted to model--probe--order triples in which $M$ and $B$ agree.}
 \label{tab:shared}
 \end{table*}
@@ -493,7 +503,7 @@ assertion, the credential and the wording control (Appendix~\ref{app:prompts})
 on incorrect suggestions. The control was also collected under the neutral
 history; those contrasts are released with the others
 (\texttt{results/}) and are outside the Holm families (credential minus wording: Llama-3.1-8B
-$\ccCWFillerLla$, Qwen3-8B $\ccCWFillerQwT$, Gemma-4-E4B $\ccCWFillerGfour$~pp).
+$\ccCWFillerLla$, Qwen3-8B $\ccCWFillerQwT$, \mbox{Gemma-4-E4B} $\ccCWFillerGfour$~pp).
 
 \begin{table*}[h]
 \centering\small\setlength{\tabcolsep}{3pt}
@@ -543,7 +553,9 @@ Table~\ref{tab:correct}.}
 \section{Items}
 \label{app:items}
 
-Table~\ref{tab:items} gives the composition of the item sets; the category
+Table~\ref{tab:items} gives the composition of the item sets. The TF-IDF
+cosine similarity between a probe and any of its history items is at most
+$\simMax$ (threshold 0.15). The category
 breakdown and item identifiers are in \texttt{results/items\_categories.csv}
 and \texttt{data/items\_*.csv}.
 
