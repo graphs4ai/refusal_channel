@@ -1,0 +1,9 @@
+model,lo,hi,width
+mistralai/Mistral-7B-Instruct-v0.3,-0.026,0.015,0.041
+google/gemma-2-9b-it,-0.371,0.573,0.944
+meta-llama/Llama-3.1-8B-Instruct,-0.09,-0.09,0
+Qwen/Qwen2.5-7B-Instruct,-0.44,0.359,0.799
+Qwen/Qwen2.5-14B-Instruct-AWQ,-0.462,0.447,0.909
+Qwen/Qwen3-8B,-0.183,-0.18,0.003
+allenai/Olmo-3-7B-Instruct,-0.716,0.801,1.517
+google/gemma-4-E4B-it,-0.086,-0.086,0
