@@ -1128,7 +1128,10 @@ def sec_transitions(p1, B):
                 r = diff_prop(y.astype(float), (sub.history == "0/3").astype(float), sub.item_id)
                 rows.append({"model": m, "signal": s_, "metric": name, **r})
     t = pd.DataFrame(rows)
-    t = pd.concat([holm(g) for _, g in t.groupby(["metric", "signal"])]).sort_index()
+    # one Holm family per metric: 8 models x 2 signals = 16 tests, as stated
+    # in the table captions (grouping by signal as well gave 8-test families;
+    # no marker changes between the two)
+    t = pd.concat([holm(g) for _, g in t.groupby("metric")]).sort_index()
     t.to_csv(RES / "baseline_eligible_transitions.csv", index=False)
     for sig, tname in (("bare", "tab_correct_suggestions"), ("credential", "tab_correct_suggestions_cred")):
         out = []
@@ -1933,9 +1936,11 @@ def style():
         "savefig.bbox": "tight", "axes.titlelocation": "left", "pdf.fonttype": 42})
 
 
-def fig_outcomes(g):
+def fig_outcomes(g, title_pad=9, suffix=""):
     """Figure 2: drawn at the printed width (\\textwidth, 6.3 in) so that
-    labels are 8-9 pt in the PDF."""
+    labels are 8-9 pt in the PDF. suffix="_icaart" writes the SCITEPRESS
+    variant, identical except for more space between panel titles and the
+    b/c labels."""
     import matplotlib.pyplot as plt
     style()
     plt.rcParams.update({"font.size": 9, "axes.titlesize": 9, "axes.labelsize": 9,
@@ -1956,7 +1961,7 @@ def fig_outcomes(g):
             ax.bar(xs, vals, 0.95, bottom=bottom, color=COL[c], edgecolor="white", lw=0.4,
                    hatch=HATCH[c], label=CLAB[c] if m == MORDER[0] else None)
             bottom += np.array(vals)
-        ax.set_title(SHORT[m], pad=9)
+        ax.set_title(SHORT[m], pad=title_pad)
         ax.set_xticks([i * 2.5 + 0.52 for i in range(4)])
         ax.set_xticklabels(["none", "neut.", "3/3", "0/3"])
         ax.tick_params(axis="x", length=0, pad=2)
@@ -1968,7 +1973,7 @@ def fig_outcomes(g):
     fig.legend(loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.005), handlelength=1.4,
                columnspacing=1.0, handletextpad=0.4)
     fig.tight_layout(rect=(0, 0.06, 1, 1), h_pad=0.6, w_pad=0.4)
-    fig.savefig(FIG / "fig_outcomes.pdf"); fig.savefig(FIG / "fig_outcomes.png", dpi=200)
+    fig.savefig(FIG / f"fig_outcomes{suffix}.pdf"); fig.savefig(FIG / f"fig_outcomes{suffix}.png", dpi=200)
     plt.close(fig)
 
 
@@ -2121,6 +2126,7 @@ def main():
     if chk_path.exists():
         sec_parser_check(main_df, pd.read_csv(chk_path))
     fig_outcomes(g)
+    fig_outcomes(g, title_pad=16, suffix="_icaart")
     fig_robust(rates, MORDER)
     for k_, v_ in list(NUM.items()):   # percent twin of every proportion: <name>Pc
         if re.fullmatch(r"[01][.][0-9]{3}", str(v_)) and k_ + "Pc" not in NUM:

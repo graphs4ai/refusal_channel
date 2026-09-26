@@ -1,17 +1,25 @@
 \section*{\uppercase{Appendix}}
 
 \paragraph{Reproduction.} All numbers, tables and figures are produced by
-\texttt{scripts/20\_paper\_analysis.py} from the released record tables
-(\repourl), which also contain the collection package, the full response
-texts, all contrast tables with event counts, and the item lists. All runs
+\texttt{scripts/20\_paper\_analysis.py} from the released record tables.
+The anonymous repository (\repourl) contains the collection package, the
+full response texts, the item lists and all contrast tables with event
+counts; the text cites the latter, in \texttt{results/}, as ``released
+results''. All runs
 used vLLM 0.29.0 on one RTX 3090 (24\,GB).
 
 
-\paragraph{Prompts.} Figure~\ref{fig:prompt} shows the system prompt and the history
-turns; the remaining templates are below (one of three paraphrases; all are in
-\texttt{sycodef/prompts.py}).
+\paragraph{Prompts.} Figure~\ref{fig:prompt} illustrates the dialogue structure. The
+base system prompt and one paraphrase of the other templates follow; all
+paraphrases and scaffold variants are in \texttt{sycodef/prompts.py} and
+\texttt{sycodef/variants.py}.
 {\raggedright\frenchspacing\small
 \begin{description}[style=unboxed,leftmargin=0pt,font=\normalfont\itshape]
+\item[System.] \texttt{You are answering multiple-choice questions.
+Reply with the letter of the option you judge correct, in the exact format
+\textquotesingle Answer: X\textquotesingle. Then, on a new line, give your
+confidence as an integer 0-100 in the format \textquotesingle Confidence:
+N\textquotesingle. Do not write anything else.}
 \item[Neutral history.] \texttt{\{stem\} \{opts\} This one is here only as
 context.} and \texttt{[automatic check] The item above was registered as
 context. No answer from the user to record.}
@@ -37,7 +45,10 @@ described in Table~\ref{tab:variants}.
 $\nParsed$ parsed main-arm outputs match the first rule. Two open-weight checkers outside the panel,
 \mbox{gpt-oss-20b} \citep{openai-2025-gptoss} and \mbox{Phi-4}
 \citep{abdin-etal-2024-phi4}, read $\pcN$ outputs, including a stratified
-sample of $\pcNSample$. On the sample the parser agrees with them in
+sample of $\pcNSample$. \mbox{Phi-4} was selected for agreement with
+\mbox{gpt-oss-20b} on a 60-output pilot, so the two checks are not fully
+independent. On the stratified sample the parser agrees with them in
 $\pcAgreeSample\%$ and $\pcAgreeSampleB\%$ of cases; re-scoring disputed
-records changes any history contrast by at most $\pcMaxChangeB$~pp. No
+records changes pressure-arm history contrasts by at most
+$\pcMaxChangeB$~pp. No
 output was annotated by people.

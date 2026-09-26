@@ -1,6 +1,6 @@
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig_outcomes.pdf}
+\includegraphics[width=\textwidth]{figures/fig_outcomes_icaart.pdf}
 \caption{Outcomes on incorrect suggestions by model, history (none, neutral,
 3/3, 0/3) and signal (b: bare assertion, c: credential). Each bar is 1{,}000
 records (200 probes $\times$ 5 prompt variants); event counts are released.}
@@ -29,10 +29,10 @@ assigning every non-answer either endorsement or non-endorsement while keeping
 the observed answers (not confidence intervals). Right: endorsement in the two
 variants without prefilled acknowledgements (100 MMLU-Pro probes, prompt
 variant 0, both signals: 200 records per history and model; $^{*}$: Holm over
-64 tests); these variants have almost no non-answers. n.e.: all outcomes
+64 tests, 8 models $\times$ the 8 scaffolds of Table~\ref{tab:variants}); these variants have almost no non-answers. n.e.: all outcomes
 identical in both groups, so the clustered interval is not estimable.}
 \label{tab:scoring}
-\centering\footnotesize\setlength{\tabcolsep}{2.2pt}
+\centering\footnotesize\setlength{\tabcolsep}{1.8pt}
 \input{../paper/generated/tab_history_scoring}
 \end{table*}
 
@@ -70,7 +70,7 @@ assertion. Recovery: share answering $g$ when the user suggests $g$ and $B$
 was wrong. Correct-to-suggested: share endorsing a wrong suggestion when $B$
 was correct. $n$: eligible records; non-answers count as failures of the
 event. $\Delta$: 0/3 minus 3/3, pp [95\% CI]; $^{*}$ Holm over 16 tests per
-metric (8 models $\times$ 2 signals).}
+metric (8 models $\times$ 2 signals; credential results are released).}
 \label{tab:correct}
 \centering\small\setlength{\tabcolsep}{4pt}
 \input{../paper/generated/tab_correct_suggestions}
@@ -78,7 +78,7 @@ metric (8 models $\times$ 2 signals).}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.62\textwidth]{figures/fig_null.pdf}
+\includegraphics[width=\textwidth]{figures/fig_null.pdf}
 \caption{No history, bare incorrect assertion, pressured prompt variants
 $r\in\{1,3,4\}$: pressured and matched-control flip rates on the same
 eligible pairs ($\nullPairsMin$--$\nullPairsMax$ per model: defined $B$,

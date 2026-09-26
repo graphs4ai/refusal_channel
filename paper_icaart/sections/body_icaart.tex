@@ -38,7 +38,7 @@ released results (\S\ref{sec:outcomes}).
 format of the prefilled scaffold: $\pctNonAnswerAckPress\%$ of pressured
 non-answers copy the prefilled acknowledgement; non-answers remain when the
 final assertion is omitted; small system-prompt changes move their rate, even
-into models that had few or none; and they
+in models that had few or none; and they
 become rare when the assistant turns are removed or replaced by the model's
 own replies (\S\ref{sec:scaffold}).
 \item A demonstration that the two usual endorsement rates answer different
@@ -121,7 +121,7 @@ presented (item lists are released). The history contrast therefore tests
 whether apparent user reliability transfers across categories, not
 calibration to demonstrated expertise in the probe's category.
 
-\paragraph{Dialogue.} The system prompt asks for ``\texttt{Answer:\ X}''
+\paragraph{Dialogue.} The system prompt asks for ``\mbox{\texttt{Answer:\ X}}''
 followed by a confidence. A history has three rounds (Figure~\ref{fig:prompt}).
 In each, the user states a question and an answer, the assistant turn is the
 fixed string ``\texttt{Noted.}'', and a verification turn states whether the
@@ -139,13 +139,14 @@ teaching). The asserted option is wrong (\emph{incorrect suggestion}) or right
 (\emph{correct suggestion}). The final turn thus has the same form as the
 history claims that were answered with ``\texttt{Noted.}''. The confidence
 field is not used in any analysis. User-turn templates have three
-paraphrases; the Appendix lists one paraphrase of each template
-and every system-prompt variant, and the repository contains all of them.
+paraphrases. The Appendix gives the base system prompt and one paraphrase of
+each user-turn template; all templates and scaffold variants are released in
+\texttt{sycodef/prompts.py} and \texttt{sycodef/variants.py}.
 
 \begin{figure}[t]
 \centering\small
 \fbox{\parbox{0.94\columnwidth}{\ttfamily\footnotesize\raggedright\frenchspacing
-System: \dots\ in the exact format \textquotesingle Answer: X\textquotesingle.
+System: \dots\ in the exact format \mbox{\textquotesingle Answer: X\textquotesingle.}
 Then \dots\ \textquotesingle Confidence: N\textquotesingle. Do not write
 anything else.\\[2pt]
 User: [history question + options] I\textquotesingle m fairly sure the answer
@@ -175,7 +176,7 @@ reformulation (appended to the probe) and an ``Are you sure?'' challenge,
 each with three greedy prompt variants ($r{=}0,1,2$) and three samples at
 $T{=}0.7$; before the challenge, the prefilled assistant turn gives the
 model's own most frequent neutral-probe answer in the same option order
-(the Appendix). The challenge is a pressure
+(Appendix). The challenge is a pressure
 condition without an asserted option. The
 pressure and shared arms form the \emph{main arm} ($\nMain$ records). The pressure arm is decoded greedily, so its prompt
 variants are not stochastic replicates. Re-running the original scaffold reproduced the parsed
@@ -188,8 +189,8 @@ models released between May 2024 and April 2026 (Table~\ref{tab:models};
 checkpoints in Table~\ref{tab:checkpoints}). All runs use the same software
 stack, vLLM \citep{kwon-etal-2023-vllm} on one 24\,GB GPU, the model's own
 chat template, greedy decoding unless stated, and a 64-token output limit.
-Qwen3-8B runs with \texttt{enable\_thinking=False} and Gemma-4-E4B with
-its template default, which disables thinking; Gemma-2-9B has no system
+\mbox{Qwen3-8B} runs with \texttt{enable\_thinking=False} and \mbox{Gemma-4-E4B} with
+its template default, which disables thinking; \mbox{Gemma-2-9B} has no system
 role, so the system prompt is prepended to the first user turn. Prompts have a
 median of $\lenMedian$ tokens and a maximum of $\lenMax$ after each chat
 template, within the context limit.
@@ -202,7 +203,7 @@ wrong} ($A\notin\{g,u\}$) or \emph{non-answer} (no option parsed); we say
 ``non-answer'' rather than ``refusal'' because the parser cannot tell an
 abstention from an unparsed answer. Re-scoring disputed outputs with two checker
 models changes history contrasts by at most $\pcMaxChangeB$~pp; there is no
-human annotation (the Appendix). The reference answer $B$ comes from
+human annotation (Appendix). The reference answer $B$ comes from
 separate no-pressure runs and is not part of the evaluated dialogue: if the
 neutral probe in variants $r{=}0$ and $r{=}2$ (same option order, different
 paraphrase) gives the same option, that option is $B$; otherwise $B$ is
@@ -224,8 +225,8 @@ contrast within 3/3 and within 0/3. Non-answer rate, unconditional
 endorsement and endorsement among parsed answers are three separate scoring
 families of 32 tests each (8 models $\times$ 4 contrasts), with
 Holm-adjusted markers \citep{holm-1979-simple}; $^{*}$ marks
-$p_{\text{Holm}}<0.05$. Secondary analyses form their own families, stated
-in each table. When all observations in both contrasted cells are identical,
+$p_{\text{Holm}}<0.05$. Secondary analyses use separate families, specified
+with the corresponding results. When all observations in both contrasted cells are identical,
 the clustered variance degenerates and we mark the interval as not
 estimable (n.e.), which is not evidence of a zero effect. The design was
 developed in stages after first results and
@@ -240,15 +241,15 @@ was not preregistered; all results are exploratory.
 \label{sec:outcomes}
 
 Figure~\ref{fig:outcomes} shows the four outcomes on incorrect suggestions.
-Mistral-7B, Llama-3.1-8B, Qwen3-8B and Gemma-4-E4B almost always return an
-option. Gemma-2-9B, Qwen2.5-7B, Qwen2.5-14B-AWQ and Olmo-3-7B return no option in
+\mbox{Mistral-7B}, \mbox{Llama-3.1-8B}, \mbox{Qwen3-8B} and \mbox{Gemma-4-E4B} almost always return an
+option. \mbox{Gemma-2-9B}, \mbox{Qwen2.5-7B}, \mbox{Qwen2.5-14B-AWQ} and \mbox{Olmo-3-7B} return no option in
 $\naPctGtwo$, $\naPctQwS$, $\naPctQwF$ and $\naPctOlm\%$ of pressured records
 (Table~\ref{tab:models}). These non-answers are concentrated in the two
 informative histories: on incorrect suggestions under the none and neutral
 histories there are $\nNoneFillerNA$ non-answers in $\nNoneFillerRecords$
 records ($\pctNoneFillerNA\%$), with no cell above $\maxNoneFillerCell\%$.
 Truncation at 64 tokens affects $\pctTruncMain\%$ of main-arm records, mostly
-Mistral-7B ($\pctTruncMistral\%$ of its records), which continues past its
+\mbox{Mistral-7B} ($\pctTruncMistral\%$ of its records), which continues past its
 answer; only $\nTruncNA$ main-arm non-answers are truncated, and regenerating
 them with 256 tokens changes no model's non-answer rate by more than
 $\maxNAChangeTrunc$~pp.
@@ -264,29 +265,29 @@ $\nNonAnswerShared$ non-answers, none of this form.
 No non-answer contains an explicit abstention phrase (``I cannot'', ``I don't
 know'', \dots); of the $\nNonAnswerRest$ non-answers in either arm that are not the bare
 acknowledgement, $\nRestTrunc$ are cut at the token limit ($\nRestTruncMis$
-from Mistral-7B) and $\nRestAckPlus$ are the acknowledgement followed by
-other text ($\nRestAckPlusGtwo$ from Gemma-2-9B). The final user turn has the
+from \mbox{Mistral-7B}) and $\nRestAckPlus$ are the acknowledgement followed by
+other text ($\nRestAckPlusGtwo$ from \mbox{Gemma-2-9B}). The final user turn has the
 same form as the history claims to which the prefilled assistant replied
 ``\texttt{Noted.}'', which makes pattern continuation a plausible
 explanation. Continuation also predicts more copying when the final claim
 has the status of the acknowledged history claims (an incorrect suggestion
-after 0/3, a correct one after 3/3). This holds for Gemma-2-9B (interaction
-$\patGtwo$~pp) and Qwen2.5-14B-AWQ ($\patQwF$~pp) but not for Qwen2.5-7B or
-Olmo-3-7B (released results).
+after 0/3, a correct one after 3/3). This holds for \mbox{Gemma-2-9B} (interaction
+$\patGtwo$~pp) and \mbox{Qwen2.5-14B-AWQ} ($\patQwF$~pp) but not for \mbox{Qwen2.5-7B} or
+\mbox{Olmo-3-7B} (released results).
 
 \paragraph{They occur without an assertion on the probe.} In the matched
 control the dialogue is identical, including history, paraphrase and option
-order, but the final turn only asks the question. Olmo-3-7B still returns no
+order, but the final turn only asks the question. \mbox{Olmo-3-7B} still returns no
 option in $\ctlNAOlmGood\%$ (3/3) and $\ctlNAOlmBad\%$ (0/3) of these
 records, against $\prNAOlmGood\%$ and $\prNAOlmBad\%$ on incorrect
-suggestions under pressure (both signals); Qwen2.5-7B returns no option in
+suggestions under pressure (both signals); \mbox{Qwen2.5-7B} returns no option in
 $\ctlNAQwSGood\%$ and $\ctlNAQwSBad\%$ of control records (pressure:
 $\prNAQwSGood\%$ and $\prNAQwSBad\%$), so its history dependence
 ($\ctlNAHistQwS$~pp in the control) is present before any assertion on the
 target probe, although the earlier user claims are retained. With no
-history, no model returns a non-answer in the control. For Gemma-2-9B
+history, no model returns a non-answer in the control. For \mbox{Gemma-2-9B}
 (control $\ctlNAGtwoGood\%$ and $\ctlNAGtwoBad\%$; pressure $\prNAGtwoGood\%$
-and $\prNAGtwoBad\%$) and Qwen2.5-14B-AWQ ($\ctlNAQwFBad\%$ vs.\ $\prNAQwFBad\%$
+and $\prNAGtwoBad\%$) and \mbox{Qwen2.5-14B-AWQ} ($\ctlNAQwFBad\%$ vs.\ $\prNAQwFBad\%$
 at 0/3) the assertion adds most of it (released results).
 
 \paragraph{Their rate depends on details of the scaffold.} On the first 100
@@ -299,14 +300,14 @@ $\copyAltMin$--$\copyAltMax\%$ of the remaining non-answers are the new
 string. Appending an explicit instruction to give a letter lowers it by
 $\dropForceMin$--$\dropForceMax\%$. A system prompt that tells the model to
 acknowledge earlier messages with ``\texttt{Noted.}'' and answer only the
-final question removes the non-answers of Gemma-2-9B and nearly removes those of
-the Qwen2.5 models ($\naFormatQwSPc$ and $\naFormatQwFPc\%$), but leaves Olmo-3-7B at
-$\naFormatOlmPc\%$ and produces them in Llama-3.1-8B ($\naFormatLlaPc\%$), which had
-none, and Qwen3-8B ($\naFormatQwTPc\%$), which had almost none. Because this
+final question removes the non-answers of \mbox{Gemma-2-9B} and nearly removes those of
+the Qwen2.5 models ($\naFormatQwSPc$ and $\naFormatQwFPc\%$), but leaves \mbox{Olmo-3-7B} at
+$\naFormatOlmPc\%$ and produces them in \mbox{Llama-3.1-8B} ($\naFormatLlaPc\%$), which had
+none, and \mbox{Qwen3-8B} ($\naFormatQwTPc\%$), which had almost none. Because this
 prompt itself names the string, we also ran a prompt that only says that
 earlier messages are context and that the last question is to be answered:
-non-answers barely change (relative reductions of $\dropContextMin$--$\dropContextMax\%$; Gemma-2-9B $\naContextGtwoPc\%$, Olmo-3-7B $\naContextOlmPc\%$), and $\copyContextMin$--$\copyContextMax\%$ of them are still the prefilled string. Removing the confidence field raises the rate in all four
-models and produces non-answers in Mistral-7B ($\naNoConfMisPc\%$) and Qwen3-8B
+non-answers barely change (relative reductions of $\dropContextMin$--$\dropContextMax\%$; \mbox{Gemma-2-9B} $\naContextGtwoPc\%$, \mbox{Olmo-3-7B} $\naContextOlmPc\%$), and $\copyContextMin$--$\copyContextMax\%$ of them are still the prefilled string. Removing the confidence field raises the rate in all four
+models and produces non-answers in \mbox{Mistral-7B} ($\naNoConfMisPc\%$) and \mbox{Qwen3-8B}
 ($\naNoConfQwTPc\%$). Compatibility with the prefilled turns does not explain
 this; one untested possibility is that a one-line answer format makes the
 one-line acknowledgement a closer match to the requested output. Across these
@@ -322,7 +323,7 @@ $\nNASelf$ in $\nNASelfN$ records (at most $\maxNASelf\%$ for any model).
 This self-generated variant still presents a preconstructed history at the
 final turn and changes the content of the assistant turns as well as their
 origin: $\withOptSelfMin$--$\withOptSelfMax\%$ of the generated turns contain
-an ``\texttt{Answer:\ X}'' reply, and Gemma-2-9B ends its turn immediately after
+an ``\mbox{\texttt{Answer:\ X}}'' reply, and \mbox{Gemma-2-9B} ends its turn immediately after
 every verification message, so $\emptySelfGtwo\%$ of its history turns are
 empty.
 
@@ -336,10 +337,10 @@ composition depends on the condition. The two are linked by
 $P(A{=}u\mid h)=q_h\,e_h$, with $q_h$ the answer rate and $e_h$ the
 conditional endorsement under history $h$, so when $q_h$ depends on the
 history, the two rates can move in opposite directions (Table~\ref{tab:scoring}).
-Under a bare assertion, Qwen2.5-7B's unconditional endorsement changes by
+Under a bare assertion, \mbox{Qwen2.5-7B}'s unconditional endorsement changes by
 $\dEUHbQwS$~pp after a 0/3 record and its conditional endorsement by
-$\dECHbQwS$~pp. For Qwen2.5-14B-AWQ the sign reverses ($\dEUHbQwF$ vs.\
-$\dECHbQwF$~pp), and for Olmo-3-7B the point estimates reverse the other way ($\dEUHbOlm$
+$\dECHbQwS$~pp. For \mbox{Qwen2.5-14B-AWQ} the sign reverses ($\dEUHbQwF$ vs.\
+$\dECHbQwF$~pp), and for \mbox{Olmo-3-7B} the point estimates reverse the other way ($\dEUHbOlm$
 vs.\ $\dECHbOlm$~pp), although its conditional contrast is not significant
 after Holm correction. Neither quantity alone establishes factual resistance or
 isolates a change in deference among comparable responses. Both are directly
@@ -348,9 +349,9 @@ we assign every non-answer either endorsement or non-endorsement while keeping
 the observed answers: the completed contrast then lies in
 $[\Delta p-m_{3/3},\,\Delta p+m_{0/3}]$, with $\Delta p$ the observed
 unconditional contrast and $m_h$ the non-answer rate. These completion bounds
-are $[\bLoGtwo, \bHiGtwo]$~pp for Gemma-2-9B, $[\bLoQwS, \bHiQwS]$ for
-Qwen2.5-7B, $[\bLoQwF, \bHiQwF]$ for Qwen2.5-14B-AWQ and $[\bLoOlm, \bHiOlm]$
-for Olmo-3-7B, spanning zero; for the other four they are at most
+are $[\bLoGtwo, \bHiGtwo]$~pp for \mbox{Gemma-2-9B}, $[\bLoQwS, \bHiQwS]$ for
+\mbox{Qwen2.5-7B}, $[\bLoQwF, \bHiQwF]$ for \mbox{Qwen2.5-14B-AWQ} and $[\bLoOlm, \bHiOlm]$
+for \mbox{Olmo-3-7B}, spanning zero; for the other four they are at most
 $\maxNarrowWidth$~pp wide. They describe arbitrary completion of the
 non-answers, not the effect of forcing an answer.
 
@@ -358,15 +359,15 @@ In the two variants without prefilled acknowledgements non-answers are
 rare, so the two rates are nearly identical. Without assistant turns, endorsement
 after a 0/3 record is lower than after 3/3 in $\nNoAsstNeg$ models,
 significantly so in $\nNoAsstSigNeg$ ($-\nNoAsstSigMin$ to
-$-\nNoAsstSigMax$~pp; Holm over 64 tests); with self-generated turns it is lower in
+$-\nNoAsstSigMax$~pp; Holm over 64 tests, 8 models $\times$ 8 scaffolds); with self-generated turns it is lower in
 $\nSelfNeg$ and significantly so in $\nSelfSigNeg$ ($-\nSelfSigMin$ to
-$-\nSelfSigMax$~pp). Olmo-3-7B is negative without assistant turns
+$-\nSelfSigMax$~pp). \mbox{Olmo-3-7B} is negative without assistant turns
 ($\noAsstEndOlm$~pp) and not with self-generated turns ($\selfEndOlm$~pp);
-Mistral-7B is not significant in either. The self-generated contrast is also
+\mbox{Mistral-7B} is not significant in either. The self-generated contrast is also
 confounded with what the model itself said: in 0/3 histories the models'
 own replies to the user's claims gave the correct option, and so
 contradicted the user and were then confirmed by the verification, in
-$\sgContraMin$--$\sgContraMax\%$ of rounds, except Olmo-3-7B and Mistral-7B,
+$\sgContraMin$--$\sgContraMax\%$ of rounds, except \mbox{Olmo-3-7B} and \mbox{Mistral-7B},
 which mostly repeated the user's wrong answer ($\sgAgreeOlm\%$ and
 $\sgAgreeMis\%$). These two have the
 smallest self-generated contrasts, as expected if a verification that
@@ -377,7 +378,7 @@ conditions, not identified estimates of the effect of the track record.
 In the original scaffold, the history contrast on endorsement is small in
 the matched no-assertion control for most models: choosing the option that the
 paired record suggests changes by at most $\ctlEndHistMax$~pp between
-histories except for Qwen2.5-7B ($\ctlEndHistQwS$~pp, with its non-answers). For every model whose unconditional
+histories except for \mbox{Qwen2.5-7B} ($\ctlEndHistQwS$~pp, with its non-answers). For every model whose unconditional
 contrast exceeds 2~pp, it keeps its sign across item sources, probe halves
 and all five prompt variants, and pooling the eight models gives a
 negative contrast under both rates (released results).
@@ -387,9 +388,9 @@ negative contrast under both rates (released results).
 
 After a 0/3 record on other categories, the self-asserted credential raises
 unconditional endorsement by $\ccCBBadLla$, $\ccCBBadQwT$ and
-$\ccCBBadGfour$~pp for Llama-3.1-8B, Qwen3-8B and Gemma-4-E4B, the three
+$\ccCBBadGfour$~pp for \mbox{Llama-3.1-8B}, \mbox{Qwen3-8B} and \mbox{Gemma-4-E4B}, the three
 models that almost never return a non-answer and are not at ceiling
-(released contrast tables). The credential prompt also differs from the
+(released results). The credential prompt also differs from the
 bare assertion in length, construction and certainty marking, so we replaced
 the credential clause by a word-count-matched claim of diligence (``I have
 read this question and all four options twice, so I can state it: the answer
@@ -401,11 +402,11 @@ Table~\ref{tab:credctl}). After 3/3 the clause raises endorsement by
 $\ccWBGoodQwT$ to $\ccWBGoodLla$~pp, and the credential adds no detectable
 increase over it. Once the user has a track record, the increase over the bare
 assertion thus does not require an authority claim; with no history the
-credential exceeds the diligence clause for Qwen3-8B and Gemma-4-E4B
+credential exceeds the diligence clause for \mbox{Qwen3-8B} and \mbox{Gemma-4-E4B}
 ($\ccCWNoneQwT$ and $\ccCWNoneGfour$~pp). For models with frequent
 non-answers the credential mainly moves the non-answer rate after 0/3, in
-opposite directions for Gemma-2-9B ($\ccNACBBadGtwo$~pp against the bare
-assertion) and Qwen2.5-7B ($\ccNACBBadQwS$~pp).
+opposite directions for \mbox{Gemma-2-9B} ($\ccNACBBadGtwo$~pp against the bare
+assertion) and \mbox{Qwen2.5-7B} ($\ccNACBBadQwS$~pp).
 
 \subsection{Recovery and Capitulation Relative to the Baseline}
 \label{sec:correct}
@@ -416,23 +417,25 @@ directly when the baseline was correct. We therefore report recovery,
 $P(A{=}g\mid B{\neq}g,\,u{=}g)$, and the correct-to-suggested transition,
 $P(A{=}u\mid B{=}g,\,u{\neq}g)$ (Table~\ref{tab:correct}). With no history and
 a bare assertion, the transition over all five prompt variants ranges from
-$\cuMinPc\%$ (Qwen2.5-7B) to $\cuMaxPc\%$ (Mistral-7B). After a 0/3 record it is lower than after 3/3 in
+$\cuMinPc\%$ (\mbox{Qwen2.5-7B}) to $\cuMaxPc\%$ (\mbox{Mistral-7B}). After a 0/3 record it is lower than after 3/3 in
 $\nCuDown$ models after correction, and recovery is numerically lower in
-$\nRecNumDown$ models and significantly lower in $\nRecDown$. Llama-3.1-8B,
-Qwen3-8B and Gemma-4-E4B, which almost never return a non-answer, show both
+$\nRecNumDown$ models and significantly lower in $\nRecDown$. \mbox{Llama-3.1-8B},
+\mbox{Qwen3-8B} and \mbox{Gemma-4-E4B}, which almost never return a non-answer, show both
 decreases (transition $\trCuLla$, $\trCuQwT$ and $\trCuGfour$~pp; recovery
 $\trRecLla$, $\trRecQwT$ and $\trRecGfour$~pp): after a bad record these models
-resist the user whether the user is right or wrong. Mistral-7B follows
+resist the user whether the user is right or wrong. \mbox{Mistral-7B} follows
 almost every suggestion after either record. For the Qwen2.5 models the
 larger decreases (e.g., recovery $\trRecQwS$ and $\trRecQwF$~pp) and for
-Gemma-2-9B and Olmo-3-7B the increases also reflect history-dependent non-answers,
+\mbox{Gemma-2-9B} and \mbox{Olmo-3-7B} the increases also reflect history-dependent non-answers,
 which count as neither recovery nor endorsement. In the variants without
 prefilled acknowledgements, on 100 probes ($\tvRecNMin$--$\tvRecNMax$
 eligible records per cell for recovery), both rates are again lower after
 0/3 in most models: the transition in $\tvCuNoAsstNeg$ (no assistant turns)
 and $\tvCuSelfNeg$ (self-generated) models, and recovery in
 $\tvRecNoAsstNeg$ and $\tvRecSelfNeg$, although few recovery contrasts are
-significant at this size (released results).
+significant after Holm correction over 32 tests per metric (8 models $\times$
+4 scaffolds: original, no assistant turns, self-generated and context-only;
+released results).
 
 \subsection{A Matched Null for Answer Changes}
 \label{sec:null}
@@ -506,40 +509,32 @@ include a matched no-pressure control.
 %% ================================================================ LIMITATIONS
 \section*{\uppercase{Limitations}}
 
-The results concern the eight checkpoints of Table~\ref{tab:checkpoints}, one
-of them 4-bit quantised, served with vLLM and greedy decoding outside the shared-arm samples; this
-panel does not support claims about model families, sizes or release dates,
-and it does not explain why four models copy the acknowledgement and four do
-not. Larger and proprietary models are not tested, although chat APIs that
-accept caller-written assistant turns allow the same audit. The task is English
-multiple choice with four options adapted from two benchmarks, and the
-assertions and credentials are short templates. We audit one scaffold with
-experimenter-written assistant turns and test no published benchmark;
-interactive protocols are not tested. The copy check of
-\S\ref{sec:discussion}~(ii) needs only an evaluation's prompts and outputs, so
-existing benchmark results can be audited without new generations. The history is always three rounds,
-0/3 and 3/3 are extreme records, the history items come from other
-categories, and the user's earlier answers and the verification turn jointly
-establish the record, so the design does not isolate the verification text.
-The self-generated variant changes both the origin and the content of the
-assistant turns, and all robustness variants use 100 MMLU-Pro probes with one
-prompt variant. The parser was checked automatically and against two
-open-weight models outside the panel (the Appendix), but no
-output was annotated by people; most of the classification is mechanical, since
-$\pctRuleZero\%$ of parsed main-arm outputs match the first parser rule and
-$\pctNonAnswerAckPress\%$ of pressured non-answers are the exact
-acknowledgement. Non-significant differences are not evidence
-of equivalence. The design, the analyses and the auxiliary experiments were
-developed in stages after first results (recorded in the repository), and
-none was preregistered. Public benchmark items may have appeared in training
-data; pairing conditions on the same items controls item identity, but
-memorisation may interact with pressure, history or prompt form, so the
-contrasts need not generalise unchanged to unseen items.
+Results concern eight open-weight checkpoints (Table~\ref{tab:checkpoints}),
+one 4-bit quantised, evaluated with vLLM and greedy decoding outside the
+shared-arm samples. They do not support comparisons of model families, sizes
+or release dates, or explain which models copy acknowledgements. Larger and
+proprietary models were not tested. We audit one English, four-option
+scaffold with short templates, three-round histories and extreme 0/3 and 3/3
+records; no published benchmark or interactive protocol was audited, although
+the copy check of \S\ref{sec:discussion}~(ii) needs only an evaluation's
+prompts and outputs. History items come from other categories, and earlier
+answers and verification messages jointly establish reliability, so the
+verification text is not isolated. Self-generated histories change both the
+origin and content of assistant turns; robustness variants use 100 MMLU-Pro
+probes and one prompt variant. Parser validation is automated and partly
+dependent, with no human annotation (Appendix). Non-significant differences
+do not establish equivalence. The study developed in stages, with analyses
+and auxiliary experiments added after initial results; none was
+preregistered. Public items may have appeared in training data; pairing
+controls item identity but does not rule out interactions of memorisation
+with pressure, history or prompt form, or establish transfer to unseen items.
 
 \section*{\uppercase{Ethical Considerations}}
 
 The study uses public benchmarks and open-weight models and involves no human
 participants or personal data; the credential prompts describe fictitious
-users. AI assistants were used for code development and manuscript editing;
-all analyses, numbers and claims were checked by the authors against the
-released data.
+users. Claude \citep{anthropic-2026-claude} was used for
+code development and for drafting and editing the text of all sections;
+Claude and ChatGPT \citep{openai-2026-chatgpt} were used to review the
+manuscript. The authors checked all analyses, numbers and claims against the
+released data and take responsibility for the text and code.
