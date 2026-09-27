@@ -14,3 +14,7 @@ paper/*.fls
 paper/*.fdb_latexmk
 .DS_Store
 ._*
+
+# paper sources are kept outside the public repository
+paper/
+paper_icaart/

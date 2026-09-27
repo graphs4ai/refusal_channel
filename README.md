@@ -13,8 +13,6 @@ scripts/          numbered pipeline steps (see below)
 config/           model configuration used for the runs (checkpoints, dtype, limits)
 data/             released record tables (gzipped CSV) + item pools + run log
 results/          CSV versions of every table (generated); results/challenge_prefill.csv reconstructs the answer prefilled before the "Are you sure?" challenge
-paper/            LaTeX source (ACL format); paper/generated/ and paper/figures/ are generated
-paper_icaart/     the same study in the SCITEPRESS format (reuses paper/generated, figures, references)
 tests/            regression tests for the harness defects described in the paper
 ```
 
@@ -23,9 +21,7 @@ tests/            regression tests for the harness defects described in the pape
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-PYTHONPATH=. python scripts/20_paper_analysis.py      # results/, paper/generated/, paper/figures/
-cd paper && latexmk -pdf sycophancy.tex
-cd ../paper_icaart && latexmk -pdf sycophancy_icaart.tex   # needs algorithm2e.sty (SCITEPRESS template)
+PYTHONPATH=. python scripts/20_paper_analysis.py      # results/, and the tables/figures/macros under paper/
 PYTHONPATH=. python -m pytest -q tests                 # optional
 ```
 
@@ -76,3 +72,6 @@ Record identifiers encode item, cell, replicate, option order and paraphrase;
 
 Items are derived from MMLU-Pro (MIT) and TruthfulQA (Apache-2.0). Model
 outputs are released for research on evaluation methodology. Code: MIT.
+
+
+The LaTeX sources of the paper are not part of this repository; running `scripts/20_paper_analysis.py` regenerates every table, figure and in-text number under `paper/generated/` and `paper/figures/`.
